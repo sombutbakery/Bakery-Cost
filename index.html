@@ -681,7 +681,7 @@
         <table>
           <thead>
             <tr>
-              <th class="col-name">เลือกวัตถุดิบคลัง</th>
+              <th class="col-name">แนะนำวัตถุดิบคลัง</th>
               <th class="col-qty">ปริมาณ</th>
               <th class="col-unit">หน่วย</th>
               <th class="col-price">ราคา/หน่วย (฿)</th>
@@ -725,7 +725,7 @@
 
     comp.ingredients.forEach(row => {
       const tr = document.createElement('tr');
-      let optHtml = `<option value="">[ เลือกวัตถุดิบจากคลัง ]</option>`;
+      let optHtml = `<option value="">[ แนะนำให้เลือกวัตถุดิบจากคลัง ]</option>`;
       inventory.forEach(item => {
         const selected = row.invRef === item.id ? 'selected' : '';
         optHtml += `<option value="${item.id}" ${selected}>${escapeHtml(item.name)}</option>`;
