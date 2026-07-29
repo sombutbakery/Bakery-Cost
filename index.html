@@ -75,7 +75,7 @@
     margin:0; font-size:12.5px; color:#B9C4AE; font-weight:300;
   }
 
-  /* NEW SINGLE ROW LEFT-ALIGNED TABS MENU */
+  /* TABS MENU */
   .nav-tabs{
     padding: 0 24px; margin-bottom: 20px; display: flex; flex-direction: column; gap: 4px;
   }
@@ -250,6 +250,15 @@
   }
   .save-btn:hover{ transform:translateY(-1px); }
   .save-btn:active{ transform:translateY(2px); box-shadow:none; }
+  
+  /* IMPORT / EXPORT BUTTON STYLES */
+  .secondary-btn{
+    background:#EFE7CE; color:var(--ledger-dark); font-family:'Kanit',sans-serif; font-weight:500; font-size:14px;
+    border:1px solid var(--paper-line); padding:12px 20px; border-radius:9px; cursor:pointer; display:flex; align-items:center; gap:6px;
+    transition: background 0.15s;
+  }
+  .secondary-btn:hover{ background:#E5DCBA; }
+  
   .save-msg{ font-size:13.5px; color:var(--ledger); font-weight:600; font-style:italic; }
 
   @media (max-width: 860px){
@@ -269,7 +278,6 @@
       <p>The Circle House R&D</p>
     </div>
 
-    <!-- TABS MENU ALIGNED LEFT, SINGLE COLUMN/ROW STYLE -->
     <div class="nav-tabs">
       <button class="nav-btn active" id="navRecipes">─ สูตรคำนวณต้นทุน</button>
       <button class="nav-btn" id="navInventory">─ คลังวัตถุดิบกลาง</button>
@@ -382,7 +390,7 @@
     </div>
   </main>
 
-  <!-- PANEL 2: INVENTORY MANAGEMENT -->
+  <!-- PANEL 2: INVENTORY MANAGEMENT WITH IMPORT/EXPORT -->
   <main class="main view-panel" id="inventoryPanel">
     <div class="main-header">
       <h2 style="font-family:'Kanit',sans-serif; margin:0; color:var(--ledger);">📦 คลังวัตถุดิบกลาง (Ingredient Stock)</h2>
@@ -407,11 +415,13 @@
     
     <div class="actions-row">
       <button class="save-btn" id="saveInvBtn">💾 บันทึกคลังวัตถุดิบ</button>
+      <button class="secondary-btn" id="exportInvBtn">📤 ส่งออกคลัง (Export)</button>
+      <button class="secondary-btn" id="importInvBtn">📥 นำเข้าคลัง (Import)</button>
       <span class="save-msg" id="invSaveMsg"></span>
     </div>
   </main>
 
-  <!-- PANEL 3: RECIPE REPOSITORY (NEW) -->
+  <!-- PANEL 3: RECIPE REPOSITORY -->
   <main class="main view-panel" id="repoPanel">
     <div class="main-header">
       <h2 style="font-family:'Kanit',sans-serif; margin:0; color:var(--ledger);">🍰 คลังสูตรขนมสำเร็จรูป (Recipe Repository)</h2>
@@ -441,16 +451,17 @@
 
 </div>
 
-<!-- Hidden File Input for Image Click Upload Alternate -->
+<!-- Hidden Elements for Operations -->
 <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;">
+<input type="file" id="hiddenJsonInput" accept=".json" style="display:none;">
 
 <script>
 (function(){
   // App States
   const state = { id: null, name: '', yieldQty: 1, yieldUnit: 'ชิ้น', ingredients: [], extras: [], margin: 40 };
   let recipeIndex = []; 
-  let inventory = []; // [{id, name, price, unit, image}]
-  let recipeRepo = []; // [{id, name, price, image}] (NEW)
+  let inventory = []; 
+  let recipeRepo = []; 
 
   const $ = (id) => document.getElementById(id);
   
@@ -458,7 +469,7 @@
   function blankIngredient(){ return { id: uid('ing'), name:'', qty:'', unit:'', price:'', invRef:'' }; }
   function blankExtra(){ return { id: uid('ex'), name:'', amount:'' }; }
   function blankInvItem(){ return { id: uid('item'), name:'', price:'', unit:'', image:'' }; }
-  function blankRepoItem(){ return { id: uid('repo'), name:'', price:'', image:'' }; } // NEW
+  function blankRepoItem(){ return { id: uid('repo'), name:'', price:'', image:'' }; }
 
   function fmt(n){
     if(!isFinite(n) || isNaN(n)) n = 0;
@@ -482,13 +493,12 @@
     }
   };
 
-  // NAVIGATION TABS CONTROLLER (MODIFIED FOR 3 PANELS)
+  // NAVIGATION TABS CONTROLLER
   $('navRecipes').addEventListener('click', () => switchTab('recipes'));
   $('navInventory').addEventListener('click', () => switchTab('inventory'));
   $('navRepo').addEventListener('click', () => switchTab('repo'));
 
   function switchTab(tab) {
-    // reset status
     $('navRecipes').classList.remove('active');
     $('navInventory').classList.remove('active');
     $('navRepo').classList.remove('active');
@@ -505,6 +515,7 @@
       $('navInventory').classList.add('active');
       $('inventoryPanel').classList.add('active');
       $('sidebarRecipeSection').style.display = 'none';
+      renderInventory();
     } else if(tab === 'repo') {
       $('navRepo').classList.add('active');
       $('repoPanel').classList.add('active');
@@ -616,7 +627,7 @@
 
   // --- IMAGES HANDLER CONTROLS & UTILS ---
   let activeImageAreaTarget = null;
-  let activeTargetType = 'inventory'; // 'inventory' or 'repo'
+  let activeTargetType = 'inventory'; 
 
   function bindImagePasteAndClick(pasteArea, item, type) {
     pasteArea.addEventListener('paste', e => {
@@ -654,11 +665,11 @@
     e.target.value = ''; 
   });
 
-  // --- INVENTORY PANEL ---
+  // --- INVENTORY PANEL & FUNCTIONS ---
   function renderInventory(){
     const body = $('inventoryBody'); body.innerHTML = '';
     if(!inventory.length) {
-      body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--ink-soft);">คลังว่างเปล่า กดปุ่มด้านล่างเพื่อเพิ่มวัตถุดิบคลัง</td></tr>`;
+      body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--ink-soft);">คลังว่างเปล่า กดปุ่มด้านล่างเพื่อเพิ่มวัตถุดิบคลัง หรือกดปุ่ม นำเข้าคลัง</td></tr>`;
       return;
     }
     inventory.forEach(item => {
@@ -685,13 +696,67 @@
   }
 
   $('addInvRowBtn').addEventListener('click', () => { inventory.push(blankInvItem()); renderInventory(); });
+  
   $('saveInvBtn').addEventListener('click', async () => {
     if(await db.set('bakery-inventory', JSON.stringify(inventory))) {
       $('invSaveMsg').textContent = 'บันทึกข้อมูลคลังสำเร็จแล้ว ✓'; setTimeout(() => { $('invSaveMsg').textContent = ''; }, 2500);
     }
   });
 
-  // --- RECIPE REPOSITORY PANEL (NEW) ---
+  // EXPORT INVENTORY FUNCTION
+  $('exportInvBtn').addEventListener('click', () => {
+    if (!inventory.length) {
+      alert('ไม่มีข้อมูลในคลังวัตถุดิบกลางให้ส่งออกครับ');
+      return;
+    }
+    const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(inventory, null, 2));
+    const downloadAnchor = document.createElement('a');
+    downloadAnchor.setAttribute("href", dataStr);
+    downloadAnchor.setAttribute("download", `TheCircleHouse_Inventory_${new Date().toISOString().slice(0,10)}.json`);
+    document.body.appendChild(downloadAnchor);
+    downloadAnchor.click();
+    downloadAnchor.remove();
+  });
+
+  // IMPORT INVENTORY FUNCTION
+  $('importInvBtn').addEventListener('click', () => {
+    $('hiddenJsonInput').click();
+  });
+
+  $('hiddenJsonInput').addEventListener('change', e => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = async function(evt) {
+      try {
+        const importedData = JSON.parse(evt.target.result);
+        if (Array.isArray(importedData)) {
+          // Validate structure a bit
+          const isValid = importedData.every(item => item.hasOwnProperty('id') && item.hasOwnProperty('name'));
+          if (isValid) {
+            if (confirm(`พบข้อมูลวัตถุดิบจำนวน ${importedData.length} รายการ คุณต้องการนำเข้ามาแทนที่คลังปัจจุบันใช่หรือไม่?`)) {
+              inventory = importedData;
+              renderInventory();
+              await db.set('bakery-inventory', JSON.stringify(inventory));
+              $('invSaveMsg').textContent = 'นำเข้าและบันทึกคลังสำเร็จ! ✓';
+              setTimeout(() => { $('invSaveMsg').textContent = ''; }, 2500);
+            }
+          } else {
+            alert('โครงสร้างไฟล์ JSON ไม่ถูกต้องสำหรับคลังวัตถุดิบครับ');
+          }
+        } else {
+          alert('รูปแบบไฟล์ต้องเป็นอาร์เรย์รายการวัตถุดิบครับ');
+        }
+      } catch (err) {
+        alert('ไม่สามารถอ่านไฟล์ได้ กรุณาตรวจสอบว่าเป็นไฟล์คลังที่ส่งออกมาจากโปรแกรมนี้อย่างถูกต้อง');
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = ''; // Reset file input
+  });
+
+  // --- RECIPE REPOSITORY PANEL ---
   function renderRepo(){
     const body = $('repoBody'); body.innerHTML = '';
     if(!recipeRepo.length) {
