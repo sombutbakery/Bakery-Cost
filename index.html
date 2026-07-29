@@ -304,7 +304,6 @@
     padding:7px 6px; border-radius:6px; outline:none;
   }
   tbody input:focus, tbody select:focus{ background:#F1EBD4; }
-  tbody input:disabled, tbody select:disabled{ color:#7A8A73; opacity:0.85; cursor:not-allowed; }
   .num-input{ font-family:'JetBrains Mono',monospace !important; text-align:right; }
   
   /* Table Columns */
@@ -681,7 +680,7 @@
         <table>
           <thead>
             <tr>
-              <th class="col-name">เลือกวัตถุดิบคลัง</th>
+              <th class="col-name">เลือกวัตถุดิบคลัง / กรอกเอง</th>
               <th class="col-qty">ปริมาณ</th>
               <th class="col-unit">หน่วย</th>
               <th class="col-price">ราคา/หน่วย (฿)</th>
@@ -725,7 +724,7 @@
 
     comp.ingredients.forEach(row => {
       const tr = document.createElement('tr');
-      let optHtml = `<option value="">[ เลือกวัตถุดิบจากคลัง ]</option>`;
+      let optHtml = `<option value="">-- กรอกเองอิสระ --</option>`;
       inventory.forEach(item => {
         const selected = row.invRef === item.id ? 'selected' : '';
         optHtml += `<option value="${item.id}" ${selected}>${escapeHtml(item.name)}</option>`;
@@ -734,11 +733,11 @@
       tr.innerHTML = `
         <td class="col-name">
           <select class="inv-select" style="margin-bottom:4px; font-weight:600; color:var(--clay); border:1px solid var(--paper-line);">${optHtml}</select>
-          <input type="text" data-field="name" placeholder="ชื่อวัตถุดิบคลัง" value="${escapeHtml(row.name)}" disabled>
+          <input type="text" data-field="name" placeholder="ชื่อวัตถุดิบ เช่น แป้งสาลี" value="${escapeHtml(row.name)}" ${row.invRef ? 'disabled' : ''}>
         </td>
         <td class="col-qty"><input type="number" step="any" class="num-input" data-field="qty" placeholder="0" value="${row.qty}"></td>
-        <td class="col-unit"><input type="text" data-field="unit" placeholder="หน่วยวัด" value="${escapeHtml(row.unit)}" disabled></td>
-        <td class="col-price"><input type="number" step="any" class="num-input" data-field="price" placeholder="0.00" value="${row.price}" disabled></td>
+        <td class="col-unit"><input type="text" data-field="unit" placeholder="กรัม/ถ้วย" value="${escapeHtml(row.unit)}" ${row.invRef ? 'disabled' : ''}></td>
+        <td class="col-price"><input type="number" step="any" class="num-input" data-field="price" placeholder="0.00" value="${row.price}" ${row.invRef ? 'disabled' : ''}></td>
         <td class="col-sub">${fmt(ingredientSubtotal(row))} ฿</td>
         <td class="col-del"><button class="row-del-btn" title="ลบ">✕</button></td>
       `;
@@ -752,18 +751,20 @@
           const match = inventory.find(i => i.id === val);
           if(match) {
             row.name = match.name; row.price = match.price; row.unit = match.unit;
-            nameInp.value = match.name;
-            priceInp.value = match.price;
-            unitInp.value = match.unit;
+            nameInp.value = match.name; nameInp.disabled = true;
+            priceInp.value = match.price; priceInp.disabled = true;
+            unitInp.value = match.unit; unitInp.disabled = true;
           }
         } else {
-          row.name = ''; row.price = ''; row.unit = '';
-          nameInp.value = ''; priceInp.value = ''; unitInp.value = '';
+          nameInp.disabled = false; priceInp.disabled = false; unitInp.disabled = false;
         }
         recalc();
       });
 
+      nameInp.addEventListener('input', e => { row.name = e.target.value; });
       qtyInp.addEventListener('input', e => { row.qty = e.target.value; recalc(); });
+      unitInp.addEventListener('input', e => { row.unit = e.target.value; });
+      priceInp.addEventListener('input', e => { row.price = e.target.value; recalc(); });
       tr.querySelector('.row-del-btn').addEventListener('click', () => {
         comp.ingredients = comp.ingredients.filter(r => r.id !== row.id);
         renderComponentRows(blockEl, comp); 
