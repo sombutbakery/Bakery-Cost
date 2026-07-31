@@ -191,6 +191,31 @@
   .col-sub{ width:17%; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ledger); padding-right:14px;}
   .col-del{ width:6%; text-align:center; }
 
+  /* ---- พื้นที่ทำงาน 2 คอลัมน์ : ซ้าย = ต้นทุน / ขวา = โน้ตสูตร ---- */
+  .recipe-workspace-grid{
+    display:grid; grid-template-columns: 1.55fr 1fr; gap:22px; align-items:start;
+  }
+  @media (max-width: 1100px){
+    .recipe-workspace-grid{ grid-template-columns:1fr; }
+    .notes-container{ position:static !important; }
+  }
+
+  /* ---- กล่องโน้ตสูตร ---- */
+  .notes-container{
+    background:var(--card); border:1px solid var(--paper-line); border-radius:12px;
+    box-shadow:0 2px 10px var(--shadow); padding:20px; margin-bottom:24px;
+    position:sticky; top:18px;
+  }
+  .notes-textarea{
+    width:100%; box-sizing:border-box; min-height:480px;
+    border:none; background:transparent; outline:none; resize:vertical;
+    font-family:'Sarabun',sans-serif; font-size:15px; line-height:2.15; color:var(--ink);
+    padding:0 4px;
+    background-image:linear-gradient(var(--paper-line) 1px, transparent 1px);
+    background-size:100% 32px;
+  }
+  .notes-textarea::placeholder{ color:#B9AE84; }
+
   /* ---- ช่องกรอกในตารางวัตถุดิบ ---- */
   #ingredientBody td input{
     border:1px solid #E7DFC0 !important; border-radius:7px; background:#FFFDF7;
@@ -315,6 +340,8 @@
       </div>
     </div>
 
+    <div class="recipe-workspace-grid">
+     <div class="workspace-col-left">
     <div class="section-title"><span class="dot"></span>วัตถุดิบที่ใช้</div>
     <div class="card">
       <table>
@@ -346,6 +373,15 @@
         <tbody id="extraBody"></tbody>
       </table>
       <button class="add-row-btn" id="addExtraBtn">＋ เพิ่มค่าใช้จ่าย</button>
+    </div>
+     </div>
+
+     <div class="workspace-col-right">
+      <div class="section-title"><span class="dot"></span>บันทึกวิธีทำ / โน้ตย่อของสูตร</div>
+      <div class="notes-container">
+        <textarea id="recipeNotes" class="notes-textarea" placeholder="พิมพ์ลำดับขั้นตอนวิธีทำ หรือบันทึกโน้ตย่อตรงนี้ได้เลยครับ..."></textarea>
+      </div>
+     </div>
     </div>
 
     <div class="summary-grid">
@@ -465,7 +501,7 @@
 <script>
 (function(){
   // App States
-  const state = { id: null, name: '', yieldQty: 1, yieldUnit: 'ชิ้น', ingredients: [], extras: [], margin: 40 };
+  const state = { id: null, name: '', yieldQty: 1, yieldUnit: 'ชิ้น', ingredients: [], extras: [], margin: 40, notes: '' };
   let recipeIndex = []; 
   let inventory = []; // [{id, name, price, unit, image}]
   let recipeRepo = []; // [{id, name, price, image}] (NEW)
@@ -828,8 +864,8 @@
   // --- RECIPE LOGICS ---
   function newRecipe(){
     state.id = null; state.name = ''; state.yieldQty = 1; state.yieldUnit = 'ชิ้น';
-    state.ingredients = [blankIngredient(), blankIngredient()]; state.extras = [blankExtra()]; state.margin = 40;
-    $('recipeName').value = ''; $('yieldQty').value = 1; $('marginSlider').value = 40; $('marginVal').textContent = '40%'; $('saveMsg').textContent = '';
+    state.ingredients = [blankIngredient(), blankIngredient()]; state.extras = [blankExtra()]; state.margin = 40; state.notes = '';
+    $('recipeName').value = ''; $('yieldQty').value = 1; $('marginSlider').value = 40; $('marginVal').textContent = '40%'; $('recipeNotes').value = ''; $('saveMsg').textContent = '';
     renderIngredients(); renderExtras(); recalc(); highlightActive(null);
   }
   function highlightActive(id){ document.querySelectorAll('.recipe-item').forEach(el => el.classList.toggle('active', el.dataset.id === id)); }
@@ -862,8 +898,8 @@
       const res = await db.get('recipe:' + id); if(!res || !res.value) return;
       const data = JSON.parse(res.value);
       state.id = data.id; state.name = data.name || ''; state.yieldQty = data.yieldQty || 1; state.yieldUnit = data.yieldUnit || 'ชิ้น';
-      state.ingredients = data.ingredients || [blankIngredient()]; state.extras = data.extras || [blankExtra()]; state.margin = typeof data.margin === 'number' ? data.margin : 40;
-      $('recipeName').value = state.name; $('yieldQty').value = state.yieldQty; $('marginSlider').value = state.margin; $('marginVal').textContent = state.margin + '%'; $('saveMsg').textContent = '';
+      state.ingredients = data.ingredients || [blankIngredient()]; state.extras = data.extras || [blankExtra()]; state.margin = typeof data.margin === 'number' ? data.margin : 40; state.notes = data.notes || '';
+      $('recipeName').value = state.name; $('yieldQty').value = state.yieldQty; $('marginSlider').value = state.margin; $('marginVal').textContent = state.margin + '%'; $('recipeNotes').value = state.notes; $('saveMsg').textContent = '';
       renderIngredients(); renderExtras(); recalc(); highlightActive(id);
     }catch(e){ alert('ไม่สามารถโหลดสูตรนี้ได้'); }
   }
@@ -882,7 +918,7 @@
     const extraTotal = state.extras.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     const costPerPiece = (ingredientTotal + extraTotal) / Math.max(parseFloat(state.yieldQty) || 1, 1);
 
-    const payload = { id: state.id, name: state.name, yieldQty: state.yieldQty, yieldUnit: state.yieldUnit, ingredients: state.ingredients, extras: state.extras, margin: state.margin, updatedAt: Date.now() };
+    const payload = { id: state.id, name: state.name, yieldQty: state.yieldQty, yieldUnit: state.yieldUnit, ingredients: state.ingredients, extras: state.extras, margin: state.margin, notes: state.notes, updatedAt: Date.now() };
     try{
       await db.set('recipe:' + state.id, JSON.stringify(payload));
       const idx = recipeIndex.findIndex(r => r.id === state.id);
@@ -900,6 +936,7 @@
   $('recipeName').addEventListener('input', e => { state.name = e.target.value; });
   $('yieldQty').addEventListener('input', e => { state.yieldQty = e.target.value; recalc(); });
   $('marginSlider').addEventListener('input', e => { state.margin = parseFloat(e.target.value); $('marginVal').textContent = state.margin + '%'; recalc(); });
+  $('recipeNotes').addEventListener('input', e => { state.notes = e.target.value; });
   $('saveBtn').addEventListener('click', saveRecipe);
 
   async function initApp(){
