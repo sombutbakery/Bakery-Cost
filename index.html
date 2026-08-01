@@ -447,7 +447,7 @@
           <tr>
             <th style="width:10%; text-align:center;">รูปภาพ</th>
             <th style="width:30%">ชื่อวัตถุดิบ</th>
-            <th style="width:15%">ราคากลาง (฿)</th>
+            <th style="width:15%">ราคาต่อหน่วย (฿)</th>
             <th style="width:15%">หน่วยวัด</th>
             <th style="width:25%">คลิกและกด Ctrl+V เพื่อวางรูป</th>
             <th style="width:5%"></th>
@@ -498,8 +498,8 @@
 <datalist id="invNameList"></datalist>
 <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;">
 
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.15.0/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.15.0/firebase-firestore-compat.min.js"></script>
 <script>
 (function(){
   // App States
@@ -534,8 +534,12 @@
 
   let firestore = null;
   try {
-    firebase.initializeApp(firebaseConfig);
-    firestore = firebase.firestore();
+    if(typeof firebase !== 'undefined') {
+      firebase.initializeApp(firebaseConfig);
+      firestore = firebase.firestore();
+    } else {
+      console.error('Firebase SDK not loaded, using localStorage only');
+    }
   } catch(e) { console.error('Firebase init failed', e); }
 
   // Firestore doc-id friendly key (colons are fine in Firestore doc IDs, but keep it safe)
@@ -836,19 +840,22 @@
     }
     inventory.forEach(item => {
       const tr = document.createElement('tr');
-      const placeholderImg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="%23B9AE84" stroke-width="1.5"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><path d="M21 15l-5-5L5 21"/></svg>`;
+      const placeholderImg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%23B9AE84' stroke-width='1.5'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><path d='M21 15l-5-5L5 21'/></svg>`;
+      const unitOptions = ['กรัม (g)', 'มิลลิลิตร (ml)'];
       tr.innerHTML = `
         <td style="text-align:center;"><img src="${item.image || placeholderImg}" class="inv-thumb"></td>
         <td><input type="text" placeholder="ชื่อวัตถุดิบ เช่น แป้งพัดโบก" value="${escapeHtml(item.name)}"></td>
         <td><input type="number" step="any" class="num-input" placeholder="0.00" value="${item.price}"></td>
-        <td><input type="text" placeholder="กรัม / กิโลกรัม" value="${escapeHtml(item.unit)}"></td>
+        <td><select class="unit-select">${unitOptions.map(u => `<option value="${u}" ${item.unit===u?'selected':''}>${u}</option>`).join('')}</select></td>
         <td><div class="paste-area" tabindex="0">${item.image ? '<img src="'+item.image+'" class="img-preview">' : 'คลิกแล้วกด Ctrl+V เพื่อวางรูป'}</div></td>
         <td class="col-del"><button class="row-del-btn">✕</button></td>
       `;
-      const [nameInp, priceInp, unitInp] = tr.querySelectorAll('input');
+      if(!item.unit) item.unit = unitOptions[0];
+      const [nameInp, priceInp] = tr.querySelectorAll('input');
+      const unitInp = tr.querySelector('.unit-select');
       nameInp.addEventListener('input', e => { item.name = e.target.value; });
       priceInp.addEventListener('input', e => { item.price = e.target.value; });
-      unitInp.addEventListener('input', e => { item.unit = e.target.value; });
+      unitInp.addEventListener('change', e => { item.unit = e.target.value; });
       bindImagePasteAndClick(tr.querySelector('.paste-area'), item, 'inventory');
       tr.querySelector('.row-del-btn').addEventListener('click', () => {
         inventory = inventory.filter(i => i.id !== item.id); renderInventory();
@@ -874,7 +881,7 @@
     }
     recipeRepo.forEach(item => {
       const tr = document.createElement('tr');
-      const placeholderImg = `data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="%23B9AE84" stroke-width="1.5"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>`;
+      const placeholderImg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%23B9AE84' stroke-width='1.5'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>`;
       tr.innerHTML = `
         <td style="text-align:center;"><img src="${item.image || placeholderImg}" class="inv-thumb"></td>
         <td><input type="text" placeholder="ชื่อเมนูขนม เช่น Banoffee Cake" value="${escapeHtml(item.name)}"></td>
@@ -977,6 +984,15 @@
   $('marginSlider').addEventListener('input', e => { state.margin = parseFloat(e.target.value); $('marginVal').textContent = state.margin + '%'; recalc(); });
   $('recipeNotes').addEventListener('input', e => { state.notes = e.target.value; });
   $('saveBtn').addEventListener('click', saveRecipe);
+
+  // กด Enter ในช่องกรอกข้อมูลสูตร (ยกเว้นช่องโน้ตย่อ/วิธีทำ) เพื่อบันทึกทันที
+  $('recipePanel').addEventListener('keydown', e => {
+    if(e.key === 'Enter' && e.target.tagName !== 'TEXTAREA') {
+      e.preventDefault();
+      e.target.blur();
+      saveRecipe();
+    }
+  });
 
   async function initApp(){
     try {
