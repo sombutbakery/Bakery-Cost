@@ -185,10 +185,10 @@
   tbody td{ padding:7px 10px; border-bottom:1px solid #EEE7CE; vertical-align:middle; }
   tbody tr:last-child td{ border-bottom:none; }
   tbody input, tbody select{
-    width:100%; border:none; background:transparent; font-family:'Sarabun',sans-serif; font-size:14.5px; color:var(--ink);
-    padding:7px 6px; border-radius:6px; outline:none;
+    width:100%; border:1px solid #EFE9CE; background:#FFFDF6; font-family:'Sarabun',sans-serif; font-size:14.5px; color:var(--ink);
+    padding:7px 8px; border-radius:6px; outline:none; box-sizing:border-box;
   }
-  tbody input:focus, tbody select:focus{ background:#F1EBD4; }
+  tbody input:focus, tbody select:focus{ background:#FFFFFF; border-color:var(--gold-dark); }
   .num-input{ font-family:'JetBrains Mono',monospace !important; text-align:right; }
   
   /* Table Columns */
@@ -388,6 +388,8 @@
   .stamp-footer b{ color:var(--gold); font-size:15px; }
 
   .actions-row{ display:flex; gap:12px; margin-top:30px; flex-wrap:wrap; align-items: center; }
+  .actions-row-top{ margin-top:0; margin-bottom:18px; }
+  .actions-row .add-row-btn{ margin:0; }
   .save-btn{
     background:var(--ledger); color:#EFE7CE; font-family:'Kanit',sans-serif; font-weight:600; font-size:15px;
     border:none; padding:13px 26px; border-radius:9px; cursor:pointer; display:flex; align-items:center; gap:8px;
@@ -544,7 +546,16 @@
     <div class="main-header">
       <h2 style="font-family:'Kanit',sans-serif; margin:0; color:var(--ledger);">📦 คลังวัตถุดิบกลาง (Ingredient Stock)</h2>
     </div>
-    
+
+    <div class="actions-row actions-row-top">
+      <button class="add-row-btn" id="addInvRowBtn">＋ เพิ่มวัตถุดิบเข้าคลัง</button>
+      <button class="save-btn" id="saveInvBtn">💾 บันทึกคลังวัตถุดิบ</button>
+      <button class="util-btn" id="exportInvBtn">⭳ Export</button>
+      <button class="util-btn" id="importInvBtn">⭱ Import</button>
+      <input type="file" id="importInvFile" accept=".xlsx,.xls,.html,.csv,text/csv,application/json,.json" style="display:none;">
+      <span class="save-msg" id="invSaveMsg"></span>
+    </div>
+
     <div class="card">
       <table id="inventoryTable">
         <thead>
@@ -561,15 +572,6 @@
         </thead>
         <tbody id="inventoryBody"></tbody>
       </table>
-      <button class="add-row-btn" id="addInvRowBtn">＋ เพิ่มวัตถุดิบเข้าคลัง</button>
-    </div>
-    
-    <div class="actions-row">
-      <button class="save-btn" id="saveInvBtn">💾 บันทึกคลังวัตถุดิบ</button>
-      <button class="util-btn" id="exportInvBtn">⭳ Export</button>
-      <button class="util-btn" id="importInvBtn">⭱ Import</button>
-      <input type="file" id="importInvFile" accept=".xlsx,.xls,.html,.csv,text/csv,application/json,.json" style="display:none;">
-      <span class="save-msg" id="invSaveMsg"></span>
     </div>
   </main>
 
@@ -1031,9 +1033,9 @@
       const unitLabels = { 'กรัม (g)': 'กรัม (g)', 'มิลลิลิตร (ml)': 'มล. (ml)' };
       tr.innerHTML = `
         <td style="text-align:center;"><img src="${item.image || placeholderImg}" class="inv-thumb"></td>
-        <td><input type="text" class="inv-name" placeholder="ชื่อวัตถุดิบ เช่น แป้งพัดโบก" value="${escapeHtml(item.name)}"></td>
-        <td><input type="number" step="any" class="num-input inv-price" placeholder="เช่น 45" value="${item.price}"></td>
-        <td><input type="number" step="any" class="num-input inv-qty" placeholder="เช่น 1000" value="${item.qty}"></td>
+        <td><input type="text" class="inv-name" placeholder="ชื่อวัตถุดิบ" value="${escapeHtml(item.name)}"></td>
+        <td><input type="number" step="any" class="num-input inv-price" placeholder="0" value="${item.price}"></td>
+        <td><input type="number" step="any" class="num-input inv-qty" placeholder="0" value="${item.qty}"></td>
         <td>
           <div class="unit-toggle">
             ${unitOptions.map(u => `<button type="button" class="unit-btn ${item.unit===u?'active':''}" data-unit="${u}" title="${u}">${unitLabels[u]}</button>`).join('')}
