@@ -166,6 +166,14 @@
     display:flex; align-items:center; gap:8px;
   }
   .section-title .dot{ width:7px; height:7px; border-radius:50%; background:var(--gold); }
+  .section-title.with-action{ justify-content:space-between; }
+  .section-title-label{ display:flex; align-items:center; gap:8px; }
+  .clear-note-btn{
+    border:1px solid var(--paper-line); background:var(--card); color:var(--danger);
+    border-radius:6px; padding:5px 10px; font-family:'Kanit',sans-serif; font-size:12px;
+    cursor:pointer;
+  }
+  .clear-note-btn:hover{ background:#F3E5DE; border-color:#D8B9A9; }
 
   .card{ background:var(--card); border:1px solid var(--paper-line); border-radius:12px; box-shadow: 0 2px 10px var(--shadow); padding:6px; margin-bottom: 24px; }
 
@@ -184,12 +192,13 @@
   .num-input{ font-family:'JetBrains Mono',monospace !important; text-align:right; }
   
   /* Table Columns */
-  .col-name{ width:34%; }
-  .col-qty{ width:13%; }
+  .col-name{ width:30%; }
+  .col-qty{ width:11%; }
   .col-unit{ width:13%; }
-  .col-price{ width:17%; }
-  .col-sub{ width:17%; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ledger); padding-right:14px;}
-  .col-del{ width:6%; text-align:center; }
+  .col-price{ width:15%; }
+  .col-remark{ width:13%; }
+  .col-sub{ width:13%; text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ledger); padding-right:14px;}
+  .col-del{ width:5%; text-align:center; }
 
   /* ---- พื้นที่ทำงาน 2 คอลัมน์ : ซ้าย = ต้นทุน / ขวา = โน้ตสูตร ---- */
   .recipe-workspace-grid{
@@ -226,7 +235,7 @@
   #ingredientBody td input::placeholder{ color:#B9AE84; }
   #ingredientBody .ing-name-input{ font-weight:600; color:var(--clay); }
   #ingredientBody .ing-note{
-    display:block; margin:5px 2px 0; font-size:12px; line-height:1.45; color:var(--ink-soft);
+    display:none; margin:5px 2px 0; font-size:12px; line-height:1.45; color:var(--ink-soft);
   }
   #ingredientBody .ing-note:empty{ display:none; }
   #ingredientBody .ing-note.linked{ color:#5C7A52; }
@@ -367,6 +376,7 @@
             <th class="col-qty">ปริมาณ</th>
             <th class="col-unit">หน่วย</th>
             <th class="col-price">ราคา/หน่วย (฿)</th>
+            <th class="col-remark">Remark</th>
             <th class="col-sub">รวม (฿)</th>
             <th class="col-del"></th>
           </tr>
@@ -393,7 +403,10 @@
      </div>
 
      <div class="workspace-col-right">
-      <div class="section-title"><span class="dot"></span>บันทึกวิธีทำ / โน้ตย่อของสูตร</div>
+      <div class="section-title with-action">
+        <span class="section-title-label"><span class="dot"></span>บันทึกวิธีทำ / โน้ตย่อของสูตร</span>
+        <button type="button" class="clear-note-btn" id="clearNotesBtn">ล้าง</button>
+      </div>
       <div class="notes-container">
         <textarea id="recipeNotes" class="notes-textarea" placeholder="พิมพ์ลำดับขั้นตอนวิธีทำ หรือบันทึกโน้ตย่อตรงนี้ได้เลยครับ..."></textarea>
       </div>
@@ -480,7 +493,7 @@
       <button class="save-btn" id="saveInvBtn">💾 บันทึกคลังวัตถุดิบ</button>
       <button class="util-btn" id="exportInvBtn">⭳ Export</button>
       <button class="util-btn" id="importInvBtn">⭱ Import</button>
-      <input type="file" id="importInvFile" accept=".xls,.html,.csv,text/csv,application/json,.json" style="display:none;">
+      <input type="file" id="importInvFile" accept=".xlsx,.xls,.html,.csv,text/csv,application/json,.json" style="display:none;">
       <span class="save-msg" id="invSaveMsg"></span>
     </div>
   </main>
@@ -524,6 +537,7 @@
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.15.0/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/12.15.0/firebase-firestore-compat.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script>
 (function(){
   // App States
@@ -535,7 +549,7 @@
   const $ = (id) => document.getElementById(id);
   
   function uid(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
-  function blankIngredient(){ return { id: uid('ing'), name:'', qty:'', unit:'', price:'', invRef:'', customUnit:false, customPrice:false }; }
+  function blankIngredient(){ return { id: uid('ing'), name:'', qty:'', unit:'', price:'', remark:'', invRef:'', customUnit:false, customPrice:false }; }
   function blankExtra(){ return { id: uid('ex'), name:'', amount:'' }; }
   function blankInvItem(){ return { id: uid('item'), name:'', price:'', qty:'', unit:'', image:'' }; }
   function blankRepoItem(){ return { id: uid('repo'), name:'', price:'', image:'' }; } // NEW
@@ -543,6 +557,11 @@
   function fmt(n){
     if(!isFinite(n) || isNaN(n)) n = 0;
     return n.toLocaleString('th-TH', {minimumFractionDigits:2, maximumFractionDigits:2});
+  }
+  function fmtInput(n, digits = 3){
+    const num = parseFloat(n);
+    if(!isFinite(num) || isNaN(num)) return n || '';
+    return parseFloat(num.toFixed(digits)).toString();
   }
   function escapeHtml(str){ return (str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
@@ -669,7 +688,7 @@
     if(!row.customUnit && inv.unit) row.unit = inv.unit;
     if(!row.customPrice){
       const up = invUnitPrice(inv);
-      if(up !== null) row.price = up;
+      if(up !== null) row.price = fmtInput(up, 3);
     }
     return inv;
   }
@@ -688,7 +707,8 @@
         </td>
         <td class="col-qty"><input type="number" step="any" class="num-input" data-field="qty" placeholder="0" value="${row.qty}"></td>
         <td class="col-unit"><input type="text" data-field="unit" placeholder="กรัม/ถ้วย" value="${escapeHtml(row.unit)}"></td>
-        <td class="col-price"><input type="number" step="any" class="num-input" data-field="price" placeholder="0.00" value="${row.price}"></td>
+        <td class="col-price"><input type="number" step="any" class="num-input" data-field="price" placeholder="0.00" value="${fmtInput(row.price, 3)}"></td>
+        <td class="col-remark"><input type="text" data-field="remark" placeholder="หมายเหตุ" value="${escapeHtml(row.remark)}"></td>
         <td class="col-sub">${fmt(ingredientSubtotal(row))} ฿</td>
         <td class="col-del"><button class="row-del-btn" title="ลบ">✕</button></td>
       `;
@@ -697,6 +717,7 @@
       const qtyInp   = tr.querySelector('[data-field="qty"]');
       const unitInp  = tr.querySelector('[data-field="unit"]');
       const priceInp = tr.querySelector('[data-field="price"]');
+      const remarkInp = tr.querySelector('[data-field="remark"]');
       const noteEl   = tr.querySelector('.ing-note');
 
       function updateNote(){
@@ -743,6 +764,7 @@
       });
 
       qtyInp.addEventListener('input', e => { row.qty = e.target.value; recalc(); });
+      remarkInp.addEventListener('input', e => { row.remark = e.target.value; });
 
       unitInp.addEventListener('input', e => {
         row.unit = e.target.value;
@@ -801,6 +823,15 @@
 
   function ingredientSubtotal(row){
     return (parseFloat(row.qty) || 0) * (parseFloat(row.price) || 0);
+  }
+
+  function recipeSuggestedPrice(){
+    const ingredientTotal = state.ingredients.reduce((s,r) => s + ingredientSubtotal(r), 0);
+    const extraTotal = state.extras.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
+    const total = ingredientTotal + extraTotal;
+    const yieldQty = Math.max(parseFloat(state.yieldQty) || 1, 1);
+    const costPerPiece = total / yieldQty;
+    return costPerPiece * (1 + (parseFloat(state.margin) || 0)/100);
   }
 
   function recalc(){
@@ -1063,42 +1094,94 @@
     return inventoryFromRows(rows);
   }
 
-  // Export/Import คลังวัตถุดิบ (Excel-style template + CSV/legacy JSON)
+  function inventoryWorkbookRows(){
+    return [inventoryTemplateHeaders].concat(inventoryCsvRows());
+  }
+
+  function exportInventoryXlsx(){
+    const workbook = XLSX.utils.book_new();
+    const worksheet = XLSX.utils.aoa_to_sheet(inventoryWorkbookRows());
+    worksheet['!cols'] = [
+      { wch: 30 }, { wch: 14 }, { wch: 10 }, { wch: 12 },
+      { wch: 16 }, { wch: 12 }, { wch: 42 }
+    ];
+    worksheet['!autofilter'] = { ref: 'A1:G1' };
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Inventory');
+    XLSX.writeFile(workbook, 'inventory-template-' + new Date().toISOString().slice(0,10) + '.xlsx');
+  }
+
+  function inventoryFromWorkbook(buffer){
+    if(typeof XLSX === 'undefined') throw new Error('XLSX library not loaded');
+    const workbook = XLSX.read(buffer, { type: 'array' });
+    const sheetName = workbook.SheetNames[0];
+    if(!sheetName) return [];
+    const rows = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName], { header: 1, defval: '' });
+    return inventoryFromRows(rows.map(row => row.map(cell => cell == null ? '' : String(cell))));
+  }
+
+  function readInventoryFile(file){
+    return new Promise((resolve, reject) => {
+      const fileName = file.name.toLowerCase();
+      const reader = new FileReader();
+      reader.onload = ev => {
+        try {
+          const result = ev.target.result;
+          let parsed;
+          if(fileName.endsWith('.json')) {
+            parsed = JSON.parse(result || '[]');
+          } else if(fileName.endsWith('.xlsx') || (fileName.endsWith('.xls') && typeof XLSX !== 'undefined')) {
+            parsed = inventoryFromWorkbook(result);
+          } else if(fileName.endsWith('.xls') || fileName.endsWith('.html') || String(result || '').trim().startsWith('<')) {
+            parsed = inventoryFromHtml(result || '');
+          } else {
+            parsed = inventoryFromCsv(result || '');
+          }
+          resolve(parsed);
+        } catch(err) {
+          reject(err);
+        }
+      };
+      reader.onerror = () => reject(reader.error || new Error('Cannot read file'));
+      if(fileName.endsWith('.xlsx') || (fileName.endsWith('.xls') && typeof XLSX !== 'undefined')) reader.readAsArrayBuffer(file);
+      else reader.readAsText(file);
+    });
+  }
+
+  // Export/Import คลังวัตถุดิบ (real XLSX + CSV/legacy JSON)
   $('exportInvBtn').addEventListener('click', () => {
-    const blob = new Blob([inventoryTemplateHtml()], { type: 'application/vnd.ms-excel;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url; a.download = 'inventory-template-' + new Date().toISOString().slice(0,10) + '.xls';
-    document.body.appendChild(a); a.click(); a.remove();
-    URL.revokeObjectURL(url);
+    try {
+      if(typeof XLSX !== 'undefined') {
+        exportInventoryXlsx();
+        return;
+      }
+      const blob = new Blob([inventoryTemplateHtml()], { type: 'application/vnd.ms-excel;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = 'inventory-template-' + new Date().toISOString().slice(0,10) + '.xls';
+      document.body.appendChild(a); a.click(); a.remove();
+      URL.revokeObjectURL(url);
+    } catch(err) {
+      $('invSaveMsg').textContent = 'Export ไม่สำเร็จ กรุณารีเฟรชหน้าแล้วลองใหม่';
+      setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3500);
+    }
   });
   $('importInvBtn').addEventListener('click', () => { $('importInvFile').click(); });
-  $('importInvFile').addEventListener('change', e => {
+  $('importInvFile').addEventListener('change', async e => {
     const file = e.target.files && e.target.files[0];
     if(!file) return;
-    const reader = new FileReader();
-    reader.onload = async ev => {
-      try {
-        const raw = ev.target.result || '';
-        const fileName = file.name.toLowerCase();
-        const parsed = fileName.endsWith('.json')
-          ? JSON.parse(raw)
-          : fileName.endsWith('.xls') || fileName.endsWith('.html') || raw.trim().startsWith('<')
-          ? inventoryFromHtml(raw)
-          : inventoryFromCsv(raw);
-        if(!Array.isArray(parsed)) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
-        const importedItems = parsed.map(normalizeInventoryItem);
-        inventory = inventory.concat(importedItems);
-        renderInventory();
-        await persistInventory();
-        renderIngredients(); recalc();
-        $('invSaveMsg').textContent = `นำเข้า ${importedItems.length} รายการสำเร็จ ✓`; setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3000);
-      } catch(err) {
-        $('invSaveMsg').textContent = 'ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .xls/.csv ตามเทมเพลต หรือ .json เดิมจากระบบนี้';
-        setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3500);
-      }
-    };
-    reader.readAsText(file);
+    try {
+      const parsed = await readInventoryFile(file);
+      if(!Array.isArray(parsed)) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+      const importedItems = parsed.map(normalizeInventoryItem);
+      inventory = inventory.concat(importedItems);
+      renderInventory();
+      await persistInventory();
+      renderIngredients(); recalc();
+      $('invSaveMsg').textContent = `นำเข้า ${importedItems.length} รายการสำเร็จ ✓`; setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3000);
+    } catch(err) {
+      $('invSaveMsg').textContent = 'ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .xlsx/.xls/.csv ตามเทมเพลต หรือ .json เดิมจากระบบนี้';
+      setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3500);
+    }
     e.target.value = '';
   });
 
@@ -1172,6 +1255,25 @@
   });
 
   // --- RECIPE LOGICS ---
+  async function syncRecipeToRepo(suggestedPrice){
+    const repoRes = await db.get('bakery-repo');
+    recipeRepo = repoRes && repoRes.value ? JSON.parse(repoRes.value) : [];
+    const existingIndex = recipeRepo.findIndex(item => item.sourceRecipeId === state.id || item.id === state.id);
+    const existing = existingIndex >= 0 ? recipeRepo[existingIndex] : null;
+    const repoItem = {
+      id: existing ? existing.id : state.id,
+      sourceRecipeId: state.id,
+      name: state.name,
+      price: fmtInput(suggestedPrice, 2),
+      image: existing ? (existing.image || '') : '',
+      updatedAt: Date.now()
+    };
+    if(existingIndex >= 0) recipeRepo[existingIndex] = repoItem;
+    else recipeRepo.push(repoItem);
+    await db.set('bakery-repo', JSON.stringify(recipeRepo));
+    renderRepo();
+  }
+
   function newRecipe(){
     state.id = null; state.name = ''; state.yieldQty = 1; state.yieldUnit = 'ชิ้น';
     state.ingredients = [blankIngredient(), blankIngredient()]; state.extras = [blankExtra()]; state.margin = 40; state.notes = '';
@@ -1227,6 +1329,7 @@
     const ingredientTotal = state.ingredients.reduce((s,r) => s + ingredientSubtotal(r), 0);
     const extraTotal = state.extras.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     const costPerPiece = (ingredientTotal + extraTotal) / Math.max(parseFloat(state.yieldQty) || 1, 1);
+    const suggestedPrice = recipeSuggestedPrice();
 
     const payload = { id: state.id, name: state.name, yieldQty: state.yieldQty, yieldUnit: state.yieldUnit, ingredients: state.ingredients, extras: state.extras, margin: state.margin, notes: state.notes, updatedAt: Date.now() };
     try{
@@ -1235,7 +1338,8 @@
       const entry = { id: state.id, name: state.name, updatedAt: payload.updatedAt, costPerPiece };
       if(idx >= 0) recipeIndex[idx] = entry; else recipeIndex.push(entry);
       await saveIndex(); renderSidebar(); highlightActive(state.id);
-      $('saveMsg').textContent = 'บันทึกแบบร่างสูตรแล้ว ✓'; setTimeout(() => { $('saveMsg').textContent = ''; }, 2500);
+      await syncRecipeToRepo(suggestedPrice);
+      $('saveMsg').textContent = 'บันทึกสูตรและส่งไปคลังสูตรแล้ว ✓'; setTimeout(() => { $('saveMsg').textContent = ''; }, 2500);
     }catch(e){ $('saveMsg').textContent = 'เกิดข้อผิดพลาดในการบันทึก'; }
   }
 
@@ -1247,6 +1351,7 @@
   $('yieldQty').addEventListener('input', e => { state.yieldQty = e.target.value; recalc(); });
   $('marginSlider').addEventListener('input', e => { state.margin = parseFloat(e.target.value); $('marginVal').textContent = state.margin + '%'; recalc(); });
   $('recipeNotes').addEventListener('input', e => { state.notes = e.target.value; });
+  $('clearNotesBtn').addEventListener('click', () => { state.notes = ''; $('recipeNotes').value = ''; $('recipeNotes').focus(); });
   $('saveBtn').addEventListener('click', saveRecipe);
 
   // กด Enter ในช่องกรอกข้อมูลสูตร (ยกเว้นช่องโน้ตย่อ/วิธีทำ) เพื่อบันทึกทันที
