@@ -837,8 +837,7 @@
     });
 
     pasteArea.addEventListener('click', () => {
-      activeImageAreaTarget = item; activeTargetType = type;
-      $('hiddenFileInput').click();
+      pasteArea.focus();
     });
   }
 
