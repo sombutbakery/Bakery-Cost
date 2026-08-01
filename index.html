@@ -226,21 +226,39 @@
   .notes-textarea::placeholder{ color:#B9AE84; }
 
   /* ---- ช่องกรอกในตารางวัตถุดิบ ---- */
-  #ingredientBody td input{
+  .ingredient-tbody td input{
     border:1px solid #E7DFC0 !important; border-radius:7px; background:#FFFDF7;
     padding:8px 10px !important; box-sizing:border-box;
     transition:border-color .12s, background .12s;
   }
-  #ingredientBody td input:focus{ border-color:var(--gold-dark) !important; background:#FDFCF7; }
-  #ingredientBody td input::placeholder{ color:#B9AE84; }
-  #ingredientBody .ing-name-input{ font-weight:600; color:var(--clay); }
-  #ingredientBody .ing-note{
+  .ingredient-tbody td input:focus{ border-color:var(--gold-dark) !important; background:#FDFCF7; }
+  .ingredient-tbody td input::placeholder{ color:#B9AE84; }
+  .ingredient-tbody .ing-name-input{ font-weight:600; color:var(--clay); }
+  .ingredient-tbody .ing-note{
     display:none; margin:5px 2px 0; font-size:12px; line-height:1.45; color:var(--ink-soft);
   }
-  #ingredientBody .ing-note:empty{ display:none; }
-  #ingredientBody .ing-note.linked{ color:#5C7A52; }
-  #ingredientBody .ing-note.warn{ color:#B5793C; }
-  #ingredientBody .ing-note.custom{ color:var(--ink-soft); font-style:italic; }
+  .ingredient-tbody .ing-note:empty{ display:none; }
+  .ingredient-tbody .ing-note.linked{ color:#5C7A52; }
+  .ingredient-tbody .ing-note.warn{ color:#B5793C; }
+  .ingredient-tbody .ing-note.custom{ color:var(--ink-soft); font-style:italic; }
+
+  .ing-part + .ing-part{ margin-top:22px; padding-top:18px; border-top:1px dashed var(--paper-line); }
+  .ing-part-header{ display:flex; align-items:center; gap:8px; padding:4px 6px 8px 6px; }
+  .ing-part-name{
+    flex:1; font-family:'Kanit',sans-serif; font-weight:600; font-size:14.5px; color:var(--clay);
+    border:1px solid transparent; background:transparent; border-radius:7px; padding:7px 9px; outline:none;
+  }
+  .ing-part-name:hover{ border-color:var(--paper-line); }
+  .ing-part-name:focus{ border-color:var(--gold-dark); background:#FFFDF7; }
+  .ing-part-name::placeholder{ color:#B9AE84; font-weight:500; }
+  .ing-part-del{
+    background:none; border:none; color:#B9AE84; cursor:pointer; font-size:12.5px; font-family:'Kanit',sans-serif;
+    padding:5px 9px; border-radius:6px; white-space:nowrap;
+  }
+  .ing-part-del:hover{ color:var(--danger); background:#F3E5DE; }
+  .ing-part-subtotal{ display:flex; justify-content:flex-end; gap:8px; padding:8px 14px 2px 6px; font-size:13px; color:var(--ink-soft); }
+  .ing-part-subtotal b{ font-family:'JetBrains Mono',monospace; color:var(--clay); }
+  .add-part-btn{ border-style:solid; border-color:var(--gold-dark); color:var(--clay); background:#FBF3DD; }
 
   .row-del-btn{ background:none; border:none; color:#B9AE84; cursor:pointer; font-size:16px; padding:4px 8px; border-radius:6px; }
   .row-del-btn:hover{ color:var(--danger); background:#F3E5DE; }
@@ -283,7 +301,17 @@
 
   .margin-control{ display:flex; align-items:center; gap:10px; margin:14px 0 0 0; font-size:13.5px; color:var(--ink-soft); }
   .margin-control input[type=range]{ flex:1; accent-color: var(--gold-dark); }
-  .margin-control .margin-val{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--clay); width:44px; text-align:right; }
+  .margin-control .margin-val-wrap{ display:flex; align-items:center; gap:2px; }
+  .margin-control .margin-val{
+    font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--clay); width:52px; text-align:right;
+    border:1px solid transparent; background:transparent; border-radius:6px; padding:2px 4px; font-size:13.5px;
+    -moz-appearance:textfield;
+  }
+  .margin-control .margin-val::-webkit-outer-spin-button,
+  .margin-control .margin-val::-webkit-inner-spin-button{ -webkit-appearance:none; margin:0; }
+  .margin-control .margin-val:hover{ border-color: var(--paper-line); }
+  .margin-control .margin-val:focus{ outline:none; border-color: var(--gold-dark); background:#FFF; }
+  .margin-control .margin-val-pct{ font-family:'JetBrains Mono',monospace; font-weight:700; color:var(--clay); }
 
   .stamp-card{
     background:var(--ledger-dark); border-radius:12px; padding:26px 20px;
@@ -369,21 +397,8 @@
      <div class="workspace-col-left">
     <div class="section-title"><span class="dot"></span>วัตถุดิบที่ใช้</div>
     <div class="card">
-      <table>
-        <thead>
-          <tr>
-            <th class="col-name">ชื่อวัตถุดิบ</th>
-            <th class="col-qty">ปริมาณ</th>
-            <th class="col-unit">หน่วย</th>
-            <th class="col-price">ราคา/หน่วย (฿)</th>
-            <th class="col-remark">Remark</th>
-            <th class="col-sub">รวม (฿)</th>
-            <th class="col-del"></th>
-          </tr>
-        </thead>
-        <tbody id="ingredientBody"></tbody>
-      </table>
-      <button class="add-row-btn" id="addIngredientBtn">＋ เพิ่มวัตถุดิบ</button>
+      <div id="ingredientParts"></div>
+      <button class="add-row-btn add-part-btn" id="addPartBtn">＋ เพิ่มส่วนประกอบ (เช่น เค้ก, ซอส, ท็อปปิ้ง)</button>
     </div>
 
     <div class="section-title"><span class="dot"></span>ต้นทุนอื่นๆ <span style="color:var(--ink-soft); font-weight:400;">(ค่าบรรจุภัณฑ์, ค่าน้ำ/ไฟ, ค่าแรง)</span></div>
@@ -435,7 +450,10 @@
         <div class="margin-control">
           กำไรที่ต้องการ
           <input type="range" id="marginSlider" min="0" max="200" value="40">
-          <span class="margin-val" id="marginVal">40%</span>
+          <span class="margin-val-wrap">
+            <input type="number" class="margin-val" id="marginVal" value="40" min="0" step="1">
+            <span class="margin-val-pct">%</span>
+          </span>
         </div>
 
         <div class="breakdown-row" style="margin-top:6px;">
@@ -541,7 +559,7 @@
 <script>
 (function(){
   // App States
-  const state = { id: null, name: '', yieldQty: 1, yieldUnit: 'ชิ้น', ingredients: [], extras: [], margin: 40, notes: '' };
+  const state = { id: null, name: '', yieldQty: 1, yieldUnit: 'ชิ้น', parts: [], extras: [], margin: 40, notes: '' };
   let recipeIndex = []; 
   let inventory = []; // [{id, name, price, unit, image}]
   let recipeRepo = []; // [{id, name, price, image}] (NEW)
@@ -550,7 +568,12 @@
   
   function uid(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
   function blankIngredient(){ return { id: uid('ing'), name:'', qty:'', unit:'', price:'', remark:'', invRef:'', customUnit:false, customPrice:false }; }
+  function blankPart(ings){ return { id: uid('part'), name:'', ingredients: ings || [blankIngredient(), blankIngredient()] }; }
+  function allIngredientRows(){ return state.parts.reduce((acc,p) => acc.concat(p.ingredients), []); }
   function blankExtra(){ return { id: uid('ex'), name:'', amount:'' }; }
+  function defaultExtras(){
+    return ['others','ค่าน้ำ','ค่าไฟ','ค่าเสื่อม','ค่าแรง'].map(n => ({ id: uid('ex'), name:n, amount:'' }));
+  }
   function blankInvItem(){ return { id: uid('item'), name:'', price:'', qty:'', unit:'', image:'' }; }
   function blankRepoItem(){ return { id: uid('repo'), name:'', price:'', image:'' }; } // NEW
 
@@ -694,111 +717,158 @@
   }
 
   function renderIngredients(){
-    const body = $('ingredientBody'); body.innerHTML = '';
+    const container = $('ingredientParts'); container.innerHTML = '';
     syncInvDatalist();
 
-    state.ingredients.forEach(row => {
-      syncRowWithInventory(row);
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="col-name">
-          <input type="text" class="ing-name-input" data-field="name" list="invNameList" placeholder="ชื่อวัตถุดิบ เช่น แป้งสาลี" value="${escapeHtml(row.name)}">
-          <span class="ing-note"></span>
-        </td>
-        <td class="col-qty"><input type="number" step="any" class="num-input" data-field="qty" placeholder="0" value="${row.qty}"></td>
-        <td class="col-unit"><input type="text" data-field="unit" placeholder="กรัม/ถ้วย" value="${escapeHtml(row.unit)}"></td>
-        <td class="col-price"><input type="number" step="any" class="num-input" data-field="price" placeholder="0.00" value="${fmtInput(row.price, 3)}"></td>
-        <td class="col-remark"><input type="text" data-field="remark" placeholder="หมายเหตุ" value="${escapeHtml(row.remark)}"></td>
-        <td class="col-sub">${fmt(ingredientSubtotal(row))} ฿</td>
-        <td class="col-del"><button class="row-del-btn" title="ลบ">✕</button></td>
+    state.parts.forEach(part => {
+      const partEl = document.createElement('div');
+      partEl.className = 'ing-part';
+      partEl.innerHTML = `
+        <div class="ing-part-header">
+          <input type="text" class="ing-part-name" placeholder="ตั้งชื่อส่วนประกอบ เช่น เค้ก, ซอส, ท็อปปิ้ง (ไม่บังคับ)" value="${escapeHtml(part.name)}">
+          ${state.parts.length > 1 ? '<button type="button" class="ing-part-del">✕ ลบส่วนนี้</button>' : ''}
+        </div>
+        <table>
+          <thead>
+            <tr>
+              <th class="col-name">ชื่อวัตถุดิบ</th>
+              <th class="col-qty">ปริมาณ</th>
+              <th class="col-unit">หน่วย</th>
+              <th class="col-price">ราคา/หน่วย (฿)</th>
+              <th class="col-remark">Remark</th>
+              <th class="col-sub">รวม (฿)</th>
+              <th class="col-del"></th>
+            </tr>
+          </thead>
+          <tbody class="ingredient-tbody"></tbody>
+        </table>
+        <button type="button" class="add-row-btn ing-add-row-btn">＋ เพิ่มวัตถุดิบ</button>
+        ${state.parts.length > 1 ? `<div class="ing-part-subtotal">รวมส่วนนี้ <b class="ing-part-subtotal-val">0.00 ฿</b></div>` : ''}
       `;
 
-      const nameInp  = tr.querySelector('[data-field="name"]');
-      const qtyInp   = tr.querySelector('[data-field="qty"]');
-      const unitInp  = tr.querySelector('[data-field="unit"]');
-      const priceInp = tr.querySelector('[data-field="price"]');
-      const remarkInp = tr.querySelector('[data-field="remark"]');
-      const noteEl   = tr.querySelector('.ing-note');
-
-      function updateNote(){
-        noteEl.className = 'ing-note';
-        if(!(row.name || '').trim()){ noteEl.textContent = ''; return; }
-        const inv = row.invRef ? inventory.find(i => i.id === row.invRef) : null;
-        if(!inv){ noteEl.textContent = ''; return; }
-        const invUnit = invUnitPrice(inv);
-        if(row.customPrice){
-          noteEl.textContent = '✎ ใช้ราคาที่กรอกเองในสูตรนี้ (ไม่ตามคลังกลาง)';
-          noteEl.classList.add('custom');
-        } else if(!(invUnit > 0)){
-          noteEl.textContent = '⚠ อยู่ในคลังกลางแล้ว แต่ยังไม่มีราคา/ปริมาณครบ — กรอกราคาช่องขวา หรือไปใส่ในคลังกลาง';
-          noteEl.classList.add('warn');
-        } else {
-          noteEl.textContent = `🔗 ดึงจากคลังกลาง ${fmt(invUnit)} ฿ / ${inv.unit || 'หน่วย'}`;
-          noteEl.classList.add('linked');
-        }
-      }
-
-      nameInp.addEventListener('input', e => {
-        row.name = e.target.value;
-        const inv = syncRowWithInventory(row);
-        if(inv){ unitInp.value = row.unit; priceInp.value = row.price; recalc(); }
-        updateNote();
+      const nameEl = partEl.querySelector('.ing-part-name');
+      nameEl.addEventListener('input', e => { part.name = e.target.value; });
+      const delBtn = partEl.querySelector('.ing-part-del');
+      if(delBtn) delBtn.addEventListener('click', () => {
+        state.parts = state.parts.filter(p => p.id !== part.id);
+        if(state.parts.length === 0) state.parts.push(blankPart());
+        renderIngredients(); recalc();
       });
 
-      // พิมพ์ชื่อเสร็จแล้วยังไม่มีในคลังกลาง : ส่งชื่อเข้าคลังให้อัตโนมัติ (ยังไม่มีราคาก็ได้)
-      nameInp.addEventListener('blur', () => {
-        const typed = (row.name || '').trim();
-        if(!typed){ row.invRef = ''; updateNote(); return; }
-        let inv = findInvByName(typed);
-        if(!inv){
-          inv = { id: uid('item'), name: typed, price: row.customPrice ? row.price : '', qty: row.customPrice ? 1 : '', unit: row.unit || '', image: '' };
-          inventory.push(inv);
-          syncInvDatalist();
-          renderInventory();
-          persistInventory();
-        }
-        row.invRef = inv.id;
+      const tbody = partEl.querySelector('.ingredient-tbody');
+      part.ingredients.forEach(row => {
         syncRowWithInventory(row);
-        unitInp.value = row.unit; priceInp.value = row.price;
-        updateNote(); recalc();
-      });
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="col-name">
+            <input type="text" class="ing-name-input" data-field="name" list="invNameList" placeholder="ชื่อวัตถุดิบ เช่น แป้งสาลี" value="${escapeHtml(row.name)}">
+            <span class="ing-note"></span>
+          </td>
+          <td class="col-qty"><input type="number" step="any" class="num-input" data-field="qty" placeholder="0" value="${row.qty}"></td>
+          <td class="col-unit"><input type="text" data-field="unit" placeholder="กรัม/ถ้วย" value="${escapeHtml(row.unit)}"></td>
+          <td class="col-price"><input type="number" step="any" class="num-input" data-field="price" placeholder="0.00" value="${fmtInput(row.price, 3)}"></td>
+          <td class="col-remark"><input type="text" data-field="remark" placeholder="หมายเหตุ" value="${escapeHtml(row.remark)}"></td>
+          <td class="col-sub">${fmt(ingredientSubtotal(row))} ฿</td>
+          <td class="col-del"><button class="row-del-btn" title="ลบ">✕</button></td>
+        `;
+        row._tr = tr;
 
-      qtyInp.addEventListener('input', e => { row.qty = e.target.value; recalc(); });
-      remarkInp.addEventListener('input', e => { row.remark = e.target.value; });
+        const nameInp  = tr.querySelector('[data-field="name"]');
+        const qtyInp   = tr.querySelector('[data-field="qty"]');
+        const unitInp  = tr.querySelector('[data-field="unit"]');
+        const priceInp = tr.querySelector('[data-field="price"]');
+        const remarkInp = tr.querySelector('[data-field="remark"]');
+        const noteEl   = tr.querySelector('.ing-note');
 
-      unitInp.addEventListener('input', e => {
-        row.unit = e.target.value;
-        row.customUnit = e.target.value.trim() !== '';
-      });
-
-      priceInp.addEventListener('input', e => {
-        row.price = e.target.value;
-        row.customPrice = e.target.value !== '';
-        updateNote(); recalc();
-      });
-
-      // กรอกราคาในสูตรให้วัตถุดิบที่คลังกลางยังว่างราคาอยู่ : เติมกลับเข้าคลังให้เลย (ตั้งปริมาณ = 1 เพื่อให้ราคา/หน่วย ตรงกับค่าที่กรอก)
-      priceInp.addEventListener('blur', () => {
-        const inv = row.invRef ? inventory.find(i => i.id === row.invRef) : null;
-        if(!inv) return;
-        const hasInvUnitPrice = invUnitPrice(inv) !== null && invUnitPrice(inv) > 0;
-        if(!hasInvUnitPrice && parseFloat(row.price) > 0){
-          inv.price = row.price;
-          inv.qty = (parseFloat(inv.qty) > 0) ? inv.qty : 1;
-          if(!inv.unit && row.unit) inv.unit = row.unit;
-          row.customPrice = false;
-          renderInventory();
-          persistInventory();
-          updateNote();
+        function updateNote(){
+          noteEl.className = 'ing-note';
+          if(!(row.name || '').trim()){ noteEl.textContent = ''; return; }
+          const inv = row.invRef ? inventory.find(i => i.id === row.invRef) : null;
+          if(!inv){ noteEl.textContent = ''; return; }
+          const invUnit = invUnitPrice(inv);
+          if(row.customPrice){
+            noteEl.textContent = '✎ ใช้ราคาที่กรอกเองในสูตรนี้ (ไม่ตามคลังกลาง)';
+            noteEl.classList.add('custom');
+          } else if(!(invUnit > 0)){
+            noteEl.textContent = '⚠ อยู่ในคลังกลางแล้ว แต่ยังไม่มีราคา/ปริมาณครบ — กรอกราคาช่องขวา หรือไปใส่ในคลังกลาง';
+            noteEl.classList.add('warn');
+          } else {
+            noteEl.textContent = `🔗 ดึงจากคลังกลาง ${fmt(invUnit)} ฿ / ${inv.unit || 'หน่วย'}`;
+            noteEl.classList.add('linked');
+          }
         }
+
+        nameInp.addEventListener('input', e => {
+          row.name = e.target.value;
+          const inv = syncRowWithInventory(row);
+          if(inv){ unitInp.value = row.unit; priceInp.value = row.price; recalc(); }
+          updateNote();
+        });
+
+        // พิมพ์ชื่อเสร็จแล้วยังไม่มีในคลังกลาง : ส่งชื่อเข้าคลังให้อัตโนมัติ (ยังไม่มีราคาก็ได้)
+        nameInp.addEventListener('blur', () => {
+          const typed = (row.name || '').trim();
+          if(!typed){ row.invRef = ''; updateNote(); return; }
+          let inv = findInvByName(typed);
+          if(!inv){
+            inv = { id: uid('item'), name: typed, price: row.customPrice ? row.price : '', qty: row.customPrice ? 1 : '', unit: row.unit || '', image: '' };
+            inventory.push(inv);
+            syncInvDatalist();
+            renderInventory();
+            persistInventory();
+          }
+          row.invRef = inv.id;
+          syncRowWithInventory(row);
+          unitInp.value = row.unit; priceInp.value = row.price;
+          updateNote(); recalc();
+        });
+
+        qtyInp.addEventListener('input', e => { row.qty = e.target.value; recalc(); });
+        remarkInp.addEventListener('input', e => { row.remark = e.target.value; });
+
+        unitInp.addEventListener('input', e => {
+          row.unit = e.target.value;
+          row.customUnit = e.target.value.trim() !== '';
+        });
+
+        priceInp.addEventListener('input', e => {
+          row.price = e.target.value;
+          row.customPrice = e.target.value !== '';
+          updateNote(); recalc();
+        });
+
+        // กรอกราคาในสูตรให้วัตถุดิบที่คลังกลางยังว่างราคาอยู่ : เติมกลับเข้าคลังให้เลย (ตั้งปริมาณ = 1 เพื่อให้ราคา/หน่วย ตรงกับค่าที่กรอก)
+        priceInp.addEventListener('blur', () => {
+          const inv = row.invRef ? inventory.find(i => i.id === row.invRef) : null;
+          if(!inv) return;
+          const hasInvUnitPrice = invUnitPrice(inv) !== null && invUnitPrice(inv) > 0;
+          if(!hasInvUnitPrice && parseFloat(row.price) > 0){
+            inv.price = row.price;
+            inv.qty = (parseFloat(inv.qty) > 0) ? inv.qty : 1;
+            if(!inv.unit && row.unit) inv.unit = row.unit;
+            row.customPrice = false;
+            renderInventory();
+            persistInventory();
+            updateNote();
+          }
+        });
+
+        tr.querySelector('.row-del-btn').addEventListener('click', () => {
+          part.ingredients = part.ingredients.filter(r => r.id !== row.id);
+          if(part.ingredients.length === 0) part.ingredients.push(blankIngredient());
+          renderIngredients(); recalc();
+        });
+
+        updateNote();
+        tbody.appendChild(tr);
       });
 
-      tr.querySelector('.row-del-btn').addEventListener('click', () => {
-        state.ingredients = state.ingredients.filter(r => r.id !== row.id); renderIngredients(); recalc();
+      partEl.querySelector('.ing-add-row-btn').addEventListener('click', () => {
+        part.ingredients.push(blankIngredient()); renderIngredients(); recalc();
       });
 
-      body.appendChild(tr);
-      updateNote();
+      part._subEl = partEl.querySelector('.ing-part-subtotal-val');
+      container.appendChild(partEl);
     });
   }
 
@@ -826,7 +896,7 @@
   }
 
   function recipeSuggestedPrice(){
-    const ingredientTotal = state.ingredients.reduce((s,r) => s + ingredientSubtotal(r), 0);
+    const ingredientTotal = allIngredientRows().reduce((s,r) => s + ingredientSubtotal(r), 0);
     const extraTotal = state.extras.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     const total = ingredientTotal + extraTotal;
     const yieldQty = Math.max(parseFloat(state.yieldQty) || 1, 1);
@@ -835,7 +905,7 @@
   }
 
   function recalc(){
-    const ingredientTotal = state.ingredients.reduce((s,r) => s + ingredientSubtotal(r), 0);
+    const ingredientTotal = allIngredientRows().reduce((s,r) => s + ingredientSubtotal(r), 0);
     const extraTotal = state.extras.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     const total = ingredientTotal + extraTotal;
     const yieldQty = Math.max(parseFloat(state.yieldQty) || 1, 1);
@@ -844,9 +914,13 @@
     const suggested = costPerPiece * (1 + margin/100);
     const profitPerPiece = suggested - costPerPiece;
 
-    document.querySelectorAll('#ingredientBody tr').forEach((tr, i) => {
-      const row = state.ingredients[i];
-      if(row) tr.querySelector('.col-sub').textContent = fmt(ingredientSubtotal(row)) + ' ฿';
+    state.parts.forEach(part => {
+      let partTotal = 0;
+      part.ingredients.forEach(row => {
+        partTotal += ingredientSubtotal(row);
+        if(row._tr) row._tr.querySelector('.col-sub').textContent = fmt(ingredientSubtotal(row)) + ' ฿';
+      });
+      if(part._subEl) part._subEl.textContent = fmt(partTotal) + ' ฿';
     });
 
     $('sumIngredients').textContent = fmt(ingredientTotal) + ' ฿';
@@ -1276,8 +1350,8 @@
 
   function newRecipe(){
     state.id = null; state.name = ''; state.yieldQty = 1; state.yieldUnit = 'ชิ้น';
-    state.ingredients = [blankIngredient(), blankIngredient()]; state.extras = [blankExtra()]; state.margin = 40; state.notes = '';
-    $('recipeName').value = ''; $('yieldQty').value = 1; $('marginSlider').value = 40; $('marginVal').textContent = '40%'; $('recipeNotes').value = ''; $('saveMsg').textContent = '';
+    state.parts = [blankPart()]; state.extras = defaultExtras(); state.margin = 40; state.notes = '';
+    $('recipeName').value = ''; $('yieldQty').value = 1; $('marginSlider').value = 40; $('marginVal').value = 40; $('recipeNotes').value = ''; $('saveMsg').textContent = '';
     renderIngredients(); renderExtras(); recalc(); highlightActive(null);
   }
   function highlightActive(id){ document.querySelectorAll('.recipe-item').forEach(el => el.classList.toggle('active', el.dataset.id === id)); }
@@ -1310,8 +1384,9 @@
       const res = await db.get('recipe:' + id); if(!res || !res.value) return;
       const data = JSON.parse(res.value);
       state.id = data.id; state.name = data.name || ''; state.yieldQty = data.yieldQty || 1; state.yieldUnit = data.yieldUnit || 'ชิ้น';
-      state.ingredients = data.ingredients || [blankIngredient()]; state.extras = data.extras || [blankExtra()]; state.margin = typeof data.margin === 'number' ? data.margin : 40; state.notes = data.notes || '';
-      $('recipeName').value = state.name; $('yieldQty').value = state.yieldQty; $('marginSlider').value = state.margin; $('marginVal').textContent = state.margin + '%'; $('recipeNotes').value = state.notes; $('saveMsg').textContent = '';
+      state.parts = data.parts || [blankPart(data.ingredients && data.ingredients.length ? data.ingredients : [blankIngredient()])];
+      state.extras = data.extras || defaultExtras(); state.margin = typeof data.margin === 'number' ? data.margin : 40; state.notes = data.notes || '';
+      $('recipeName').value = state.name; $('yieldQty').value = state.yieldQty; $('marginSlider').value = state.margin; $('marginVal').value = state.margin; $('recipeNotes').value = state.notes; $('saveMsg').textContent = '';
       renderIngredients(); renderExtras(); recalc(); highlightActive(id);
     }catch(e){ alert('ไม่สามารถโหลดสูตรนี้ได้'); }
   }
@@ -1326,30 +1401,53 @@
     const name = $('recipeName').value.trim();
     if(!name){ $('saveMsg').textContent = 'กรุณาใส่ชื่อสูตรก่อนบันทึก'; $('recipeName').focus(); return; }
     state.name = name; if(!state.id) state.id = uid('recipe');
-    const ingredientTotal = state.ingredients.reduce((s,r) => s + ingredientSubtotal(r), 0);
+    const ingredientTotal = allIngredientRows().reduce((s,r) => s + ingredientSubtotal(r), 0);
     const extraTotal = state.extras.reduce((s,r) => s + (parseFloat(r.amount)||0), 0);
     const costPerPiece = (ingredientTotal + extraTotal) / Math.max(parseFloat(state.yieldQty) || 1, 1);
     const suggestedPrice = recipeSuggestedPrice();
 
-    const payload = { id: state.id, name: state.name, yieldQty: state.yieldQty, yieldUnit: state.yieldUnit, ingredients: state.ingredients, extras: state.extras, margin: state.margin, notes: state.notes, updatedAt: Date.now() };
+    const cleanParts = state.parts.map(p => ({
+      id: p.id, name: p.name,
+      ingredients: p.ingredients.map(({ _tr, ...rest }) => rest)
+    }));
+    const payload = { id: state.id, name: state.name, yieldQty: state.yieldQty, yieldUnit: state.yieldUnit, parts: cleanParts, extras: state.extras, margin: state.margin, notes: state.notes, updatedAt: Date.now() };
     try{
       await db.set('recipe:' + state.id, JSON.stringify(payload));
-      const idx = recipeIndex.findIndex(r => r.id === state.id);
-      const entry = { id: state.id, name: state.name, updatedAt: payload.updatedAt, costPerPiece };
-      if(idx >= 0) recipeIndex[idx] = entry; else recipeIndex.push(entry);
-      await saveIndex(); renderSidebar(); highlightActive(state.id);
+      // ไม่ต้องค้างเป็นแบบร่างอีกต่อไป — บันทึกแล้วส่งตรงเข้าคลังสูตรเลย
+      recipeIndex = recipeIndex.filter(r => r.id !== state.id);
+      await saveIndex(); renderSidebar();
       await syncRecipeToRepo(suggestedPrice);
-      $('saveMsg').textContent = 'บันทึกสูตรและส่งไปคลังสูตรแล้ว ✓'; setTimeout(() => { $('saveMsg').textContent = ''; }, 2500);
+      $('saveMsg').textContent = 'บันทึกสูตรไปที่คลังสูตรแล้ว ✓'; setTimeout(() => { $('saveMsg').textContent = ''; }, 2500);
     }catch(e){ $('saveMsg').textContent = 'เกิดข้อผิดพลาดในการบันทึก'; }
   }
 
   // APP INITIALIZATION
   $('newRecipeBtn').addEventListener('click', newRecipe);
-  $('addIngredientBtn').addEventListener('click', () => { state.ingredients.push(blankIngredient()); renderIngredients(); recalc(); });
+  $('addPartBtn').addEventListener('click', () => { state.parts.push(blankPart([blankIngredient()])); renderIngredients(); recalc(); });
   $('addExtraBtn').addEventListener('click', () => { state.extras.push(blankExtra()); renderExtras(); recalc(); });
   $('recipeName').addEventListener('input', e => { state.name = e.target.value; });
   $('yieldQty').addEventListener('input', e => { state.yieldQty = e.target.value; recalc(); });
-  $('marginSlider').addEventListener('input', e => { state.margin = parseFloat(e.target.value); $('marginVal').textContent = state.margin + '%'; recalc(); });
+  $('marginSlider').addEventListener('input', e => {
+    state.margin = parseFloat(e.target.value);
+    $('marginVal').value = state.margin;
+    recalc();
+  });
+  $('marginVal').addEventListener('input', e => {
+    let v = parseFloat(e.target.value);
+    if (isNaN(v)) v = 0;
+    if (v < 0) v = 0;
+    state.margin = v;
+    // keep the slider in sync when the typed value is within its range;
+    // for values beyond the slider's max, just push the handle to the end
+    const sliderMax = parseFloat($('marginSlider').max);
+    $('marginSlider').value = Math.min(v, sliderMax);
+    recalc();
+  });
+  $('marginVal').addEventListener('blur', e => {
+    if (e.target.value === '' || isNaN(parseFloat(e.target.value))) {
+      e.target.value = state.margin || 0;
+    }
+  });
   $('recipeNotes').addEventListener('input', e => { state.notes = e.target.value; });
   $('clearNotesBtn').addEventListener('click', () => { state.notes = ''; $('recipeNotes').value = ''; $('recipeNotes').focus(); });
   $('saveBtn').addEventListener('click', saveRecipe);
