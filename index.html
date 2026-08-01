@@ -445,11 +445,13 @@
       <table id="inventoryTable">
         <thead>
           <tr>
-            <th style="width:10%; text-align:center;">รูปภาพ</th>
-            <th style="width:30%">ชื่อวัตถุดิบ</th>
-            <th style="width:15%">ราคาต่อหน่วย (฿)</th>
-            <th style="width:15%">หน่วยวัด</th>
-            <th style="width:25%">คลิกและกด Ctrl+V เพื่อวางรูป</th>
+            <th style="width:8%; text-align:center;">รูปภาพ</th>
+            <th style="width:20%">ชื่อวัตถุดิบ</th>
+            <th style="width:11%">ราคา (฿)</th>
+            <th style="width:10%">ปริมาณ</th>
+            <th style="width:11%">หน่วยวัด</th>
+            <th style="width:13%">ราคา/หน่วย (฿)</th>
+            <th style="width:22%">คลิกและกด Ctrl+V เพื่อวางรูป</th>
             <th style="width:5%"></th>
           </tr>
         </thead>
@@ -513,7 +515,7 @@
   function uid(prefix){ return prefix + '_' + Date.now() + '_' + Math.random().toString(36).slice(2,8); }
   function blankIngredient(){ return { id: uid('ing'), name:'', qty:'', unit:'', price:'', invRef:'', customUnit:false, customPrice:false }; }
   function blankExtra(){ return { id: uid('ex'), name:'', amount:'' }; }
-  function blankInvItem(){ return { id: uid('item'), name:'', price:'', unit:'', image:'' }; }
+  function blankInvItem(){ return { id: uid('item'), name:'', price:'', qty:'', unit:'', image:'' }; }
   function blankRepoItem(){ return { id: uid('repo'), name:'', price:'', image:'' }; } // NEW
 
   function fmt(n){
@@ -623,6 +625,15 @@
     return inventory.find(i => (i.name || '').trim().toLowerCase() === key) || null;
   }
 
+  // ราคาต่อหน่วย = ราคา (ที่ซื้อมาทั้งหมด) / ปริมาณ (ที่ซื้อมา)
+  function invUnitPrice(item){
+    if(!item) return null;
+    const price = parseFloat(item.price);
+    const qty = parseFloat(item.qty);
+    if(!(price >= 0) || !(qty > 0)) return null;
+    return price / qty;
+  }
+
   async function persistInventory(){
     try { await db.set('bakery-inventory', JSON.stringify(inventory)); } catch(e) {}
   }
@@ -634,7 +645,10 @@
     if(!inv){ row.invRef = ''; return null; }
     row.invRef = inv.id;
     if(!row.customUnit && inv.unit) row.unit = inv.unit;
-    if(!row.customPrice && inv.price !== '' && inv.price != null) row.price = inv.price;
+    if(!row.customPrice){
+      const up = invUnitPrice(inv);
+      if(up !== null) row.price = up;
+    }
     return inv;
   }
 
@@ -668,15 +682,15 @@
         if(!(row.name || '').trim()){ noteEl.textContent = ''; return; }
         const inv = row.invRef ? inventory.find(i => i.id === row.invRef) : null;
         if(!inv){ noteEl.textContent = ''; return; }
-        const invPrice = parseFloat(inv.price);
+        const invUnit = invUnitPrice(inv);
         if(row.customPrice){
           noteEl.textContent = '✎ ใช้ราคาที่กรอกเองในสูตรนี้ (ไม่ตามคลังกลาง)';
           noteEl.classList.add('custom');
-        } else if(!(invPrice > 0)){
-          noteEl.textContent = '⚠ อยู่ในคลังกลางแล้ว แต่ยังไม่มีราคา — กรอกราคาช่องขวา หรือไปใส่ในคลังกลาง';
+        } else if(!(invUnit > 0)){
+          noteEl.textContent = '⚠ อยู่ในคลังกลางแล้ว แต่ยังไม่มีราคา/ปริมาณครบ — กรอกราคาช่องขวา หรือไปใส่ในคลังกลาง';
           noteEl.classList.add('warn');
         } else {
-          noteEl.textContent = `🔗 ดึงจากคลังกลาง ${fmt(invPrice)} ฿ / ${inv.unit || 'หน่วย'}`;
+          noteEl.textContent = `🔗 ดึงจากคลังกลาง ${fmt(invUnit)} ฿ / ${inv.unit || 'หน่วย'}`;
           noteEl.classList.add('linked');
         }
       }
@@ -694,7 +708,7 @@
         if(!typed){ row.invRef = ''; updateNote(); return; }
         let inv = findInvByName(typed);
         if(!inv){
-          inv = { id: uid('item'), name: typed, price: row.customPrice ? row.price : '', unit: row.unit || '', image: '' };
+          inv = { id: uid('item'), name: typed, price: row.customPrice ? row.price : '', qty: row.customPrice ? 1 : '', unit: row.unit || '', image: '' };
           inventory.push(inv);
           syncInvDatalist();
           renderInventory();
@@ -719,13 +733,14 @@
         updateNote(); recalc();
       });
 
-      // กรอกราคาในสูตรให้วัตถุดิบที่คลังกลางยังว่างราคาอยู่ : เติมกลับเข้าคลังให้เลย
+      // กรอกราคาในสูตรให้วัตถุดิบที่คลังกลางยังว่างราคาอยู่ : เติมกลับเข้าคลังให้เลย (ตั้งปริมาณ = 1 เพื่อให้ราคา/หน่วย ตรงกับค่าที่กรอก)
       priceInp.addEventListener('blur', () => {
         const inv = row.invRef ? inventory.find(i => i.id === row.invRef) : null;
         if(!inv) return;
-        const hasInvPrice = inv.price !== '' && inv.price != null && parseFloat(inv.price) > 0;
-        if(!hasInvPrice && parseFloat(row.price) > 0){
+        const hasInvUnitPrice = invUnitPrice(inv) !== null && invUnitPrice(inv) > 0;
+        if(!hasInvUnitPrice && parseFloat(row.price) > 0){
           inv.price = row.price;
+          inv.qty = (parseFloat(inv.qty) > 0) ? inv.qty : 1;
           if(!inv.unit && row.unit) inv.unit = row.unit;
           row.customPrice = false;
           renderInventory();
@@ -835,7 +850,7 @@
   function renderInventory(){
     const body = $('inventoryBody'); body.innerHTML = '';
     if(!inventory.length) {
-      body.innerHTML = `<tr><td colspan="6" style="text-align:center; padding: 20px; color: var(--ink-soft);">คลังว่างเปล่า กดปุ่มด้านล่างเพื่อเพิ่มวัตถุดิบคลัง</td></tr>`;
+      body.innerHTML = `<tr><td colspan="8" style="text-align:center; padding: 20px; color: var(--ink-soft);">คลังว่างเปล่า กดปุ่มด้านล่างเพื่อเพิ่มวัตถุดิบคลัง</td></tr>`;
       return;
     }
     inventory.forEach(item => {
@@ -844,21 +859,36 @@
       const unitOptions = ['กรัม (g)', 'มิลลิลิตร (ml)'];
       tr.innerHTML = `
         <td style="text-align:center;"><img src="${item.image || placeholderImg}" class="inv-thumb"></td>
-        <td><input type="text" placeholder="ชื่อวัตถุดิบ เช่น แป้งพัดโบก" value="${escapeHtml(item.name)}"></td>
-        <td><input type="number" step="any" class="num-input" placeholder="0.00" value="${item.price}"></td>
+        <td><input type="text" class="inv-name" placeholder="ชื่อวัตถุดิบ เช่น แป้งพัดโบก" value="${escapeHtml(item.name)}"></td>
+        <td><input type="number" step="any" class="num-input inv-price" placeholder="เช่น 45" value="${item.price}"></td>
+        <td><input type="number" step="any" class="num-input inv-qty" placeholder="เช่น 1000" value="${item.qty}"></td>
         <td><select class="unit-select">${unitOptions.map(u => `<option value="${u}" ${item.unit===u?'selected':''}>${u}</option>`).join('')}</select></td>
+        <td class="inv-unitprice" style="text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ledger);"></td>
         <td><div class="paste-area" tabindex="0">${item.image ? '<img src="'+item.image+'" class="img-preview">' : 'คลิกแล้วกด Ctrl+V เพื่อวางรูป'}</div></td>
         <td class="col-del"><button class="row-del-btn">✕</button></td>
       `;
       if(!item.unit) item.unit = unitOptions[0];
-      const [nameInp, priceInp] = tr.querySelectorAll('input');
+      const nameInp = tr.querySelector('.inv-name');
+      const priceInp = tr.querySelector('.inv-price');
+      const qtyInp = tr.querySelector('.inv-qty');
       const unitInp = tr.querySelector('.unit-select');
+      const unitPriceCell = tr.querySelector('.inv-unitprice');
+
+      function refreshUnitPrice(){
+        const up = invUnitPrice(item);
+        unitPriceCell.textContent = up !== null ? (fmt(up) + ' ฿') : '—';
+      }
+      refreshUnitPrice();
+
       nameInp.addEventListener('input', e => { item.name = e.target.value; });
-      priceInp.addEventListener('input', e => { item.price = e.target.value; });
+      priceInp.addEventListener('input', e => { item.price = e.target.value; refreshUnitPrice(); });
+      qtyInp.addEventListener('input', e => { item.qty = e.target.value; refreshUnitPrice(); });
       unitInp.addEventListener('change', e => { item.unit = e.target.value; });
       bindImagePasteAndClick(tr.querySelector('.paste-area'), item, 'inventory');
       tr.querySelector('.row-del-btn').addEventListener('click', () => {
-        inventory = inventory.filter(i => i.id !== item.id); renderInventory();
+        inventory = inventory.filter(i => i.id !== item.id);
+        renderInventory();
+        persistInventory();
       });
       body.appendChild(tr);
     });
@@ -894,7 +924,9 @@
       priceInp.addEventListener('input', e => { item.price = e.target.value; });
       bindImagePasteAndClick(tr.querySelector('.paste-area'), item, 'repo');
       tr.querySelector('.row-del-btn').addEventListener('click', () => {
-        recipeRepo = recipeRepo.filter(i => i.id !== item.id); renderRepo();
+        recipeRepo = recipeRepo.filter(i => i.id !== item.id);
+        renderRepo();
+        db.set('bakery-repo', JSON.stringify(recipeRepo));
       });
       body.appendChild(tr);
     });
