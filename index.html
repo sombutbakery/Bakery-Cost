@@ -280,6 +280,63 @@
   .img-preview{ max-height: 44px; max-width: 100%; border-radius: 4px; display: block; margin: 0 auto; }
   .inv-thumb{ width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--paper-line); background: #FFF; }
 
+  /* ---- คลังสูตรขนมพร้อมรูป : แบบการ์ด ---- */
+  .repo-card-container{ background:transparent; border:none; box-shadow:none; padding:0; }
+  .repo-grid{
+    display:grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap:18px;
+  }
+  .repo-card{
+    background:var(--card); border:1px solid var(--paper-line); border-radius:14px;
+    box-shadow: 0 2px 10px var(--shadow); overflow:hidden; position:relative;
+    display:flex; flex-direction:column;
+  }
+  .repo-card-img{
+    aspect-ratio: 1 / 1; width:100%; background:#F2ECD4; cursor:pointer; position:relative;
+    display:flex; align-items:center; justify-content:center; overflow:hidden;
+  }
+  .repo-card-img:hover{ background:#EEE6C6; }
+  .repo-card-img img{ width:100%; height:100%; object-fit:cover; display:block; }
+  .repo-card-img .repo-img-hint{
+    font-size:12px; line-height:1.6; color:var(--ink-soft); text-align:center; padding:12px;
+  }
+  .repo-card-del{
+    position:absolute; top:8px; right:8px; width:26px; height:26px; border-radius:50%;
+    background:rgba(255,253,247,0.92); border:1px solid var(--paper-line); color:#B9AE84;
+    cursor:pointer; display:flex; align-items:center; justify-content:center; font-size:13px; z-index:2;
+  }
+  .repo-card-del:hover{ color:var(--danger); border-color:var(--danger); background:#FFF; }
+  .repo-card-body{ padding:12px 14px 14px; display:flex; flex-direction:column; gap:8px; }
+  .repo-card-name{
+    font-family:'Kanit',sans-serif; font-weight:600; font-size:15px; color:var(--clay);
+    border:1px solid transparent; border-radius:7px; padding:5px 6px; background:transparent; outline:none;
+  }
+  .repo-card-name:hover{ border-color:var(--paper-line); }
+  .repo-card-name:focus{ border-color:var(--gold-dark); background:#FFFDF7; }
+  .repo-card-name::placeholder{ color:#B9AE84; font-weight:500; }
+  .repo-card-price-row{
+    display:flex; align-items:center; gap:6px; padding:0 2px;
+  }
+  .repo-card-price-row input{
+    flex:1; min-width:0; border:1px solid #E7DFC0; border-radius:7px; padding:7px 9px;
+    font-family:'JetBrains Mono',monospace; text-align:right; background:#FFFDF7; color:var(--ledger); font-weight:600;
+    outline:none;
+  }
+  .repo-card-price-row input:focus{ border-color:var(--gold-dark); }
+  .repo-card-price-row .bt{ font-family:'JetBrains Mono',monospace; color:var(--ink-soft); font-size:13px; }
+  .repo-add-card{
+    border:2px dashed var(--paper-line); border-radius:14px; min-height:230px; background:transparent;
+    display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; cursor:pointer;
+    color:var(--ink-soft); font-family:'Kanit',sans-serif; font-weight:500; font-size:13.5px;
+  }
+  .repo-add-card:hover{ border-color:var(--gold-dark); color:var(--clay); }
+  .repo-card.linked{ cursor:pointer; transition: box-shadow .15s, transform .15s; }
+  .repo-card.linked:hover{ box-shadow: 0 6px 18px var(--shadow); transform: translateY(-2px); border-color: var(--gold-dark); }
+  .repo-card-edit-hint{
+    font-size:11px; color:var(--ink-soft); text-align:center; padding:0 14px 10px; opacity:0; transition:opacity .12s;
+  }
+  .repo-card.linked:hover .repo-card-edit-hint{ opacity:1; }
+  .repo-empty-note{ grid-column:1/-1; text-align:center; padding:14px; color:var(--ink-soft); font-size:13.5px; }
+
   .unit-toggle{ display:flex; gap:4px; flex-wrap:nowrap; }
   .unit-btn{
     font-family:'Sarabun',sans-serif; font-size:11.5px; font-weight:500; color:var(--ink-soft); white-space:nowrap;
@@ -522,20 +579,8 @@
       <h2 style="font-family:'Kanit',sans-serif; margin:0; color:var(--ledger);">🍰 คลังสูตรขนมสำเร็จรูป (Recipe Repository)</h2>
     </div>
 
-    <div class="card">
-      <table id="repoTable">
-        <thead>
-          <tr>
-            <th style="width:10%; text-align:center;">รูปภาพสินค้า</th>
-            <th style="width:30%">ชื่อเมนู / ขนม</th>
-            <th style="width:20%">ราคาขายหน้าร้าน (฿)</th>
-            <th style="width:35%">คลิกและกด Ctrl+V เพื่อวางรูปภาพขนม</th>
-            <th style="width:5%"></th>
-          </tr>
-        </thead>
-        <tbody id="repoBody"></tbody>
-      </table>
-      <button class="add-row-btn" id="addRepoRowBtn">＋ เพิ่มเมนูเข้าคลังสูตร</button>
+    <div class="card repo-card-container">
+      <div class="repo-grid" id="repoGrid"></div>
     </div>
 
     <div class="actions-row">
@@ -1261,35 +1306,58 @@
 
   // --- RECIPE REPOSITORY PANEL (NEW) ---
   function renderRepo(){
-    const body = $('repoBody'); body.innerHTML = '';
-    if(!recipeRepo.length) {
-      body.innerHTML = `<tr><td colspan="5" style="text-align:center; padding: 20px; color: var(--ink-soft);">คลังสูตรว่างเปล่า กดปุ่มด้านล่างเพื่อเพิ่มเมนูขนมชิ้นแรกของคุณ</td></tr>`;
-      return;
+    const grid = $('repoGrid'); grid.innerHTML = '';
+
+    if(!recipeRepo.length){
+      const note = document.createElement('div');
+      note.className = 'repo-empty-note';
+      note.textContent = 'คลังสูตรว่างเปล่า กดการ์ด "+ เพิ่มเมนู" ด้านล่างเพื่อเพิ่มเมนูขนมชิ้นแรกของคุณ';
+      grid.appendChild(note);
     }
+
     recipeRepo.forEach(item => {
-      const tr = document.createElement('tr');
-      const placeholderImg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%23B9AE84' stroke-width='1.5'><path d='M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5'/></svg>`;
-      tr.innerHTML = `
-        <td style="text-align:center;"><img src="${item.image || placeholderImg}" class="inv-thumb"></td>
-        <td><input type="text" placeholder="ชื่อเมนูขนม เช่น Banoffee Cake" value="${escapeHtml(item.name)}"></td>
-        <td><input type="number" step="any" class="num-input" placeholder="0.00" value="${item.price}"></td>
-        <td><div class="paste-area" tabindex="0">${item.image ? '<img src="'+item.image+'" class="img-preview">' : 'คลิกแล้วกด Ctrl+V เพื่อวางรูปภาพเมนูสำเร็จ'}</div></td>
-        <td class="col-del"><button class="row-del-btn">✕</button></td>
+      const card = document.createElement('div');
+      card.className = 'repo-card' + (item.sourceRecipeId ? ' linked' : '');
+      card.innerHTML = `
+        <div class="repo-card-img paste-area" tabindex="0">
+          ${item.image ? `<img src="${item.image}">` : `<span class="repo-img-hint">📷<br>คลิกแล้วกด Ctrl+V<br>เพื่อวางรูปเมนู</span>`}
+        </div>
+        <button class="repo-card-del" title="ลบ">✕</button>
+        <div class="repo-card-body">
+          <input type="text" class="repo-card-name" placeholder="ชื่อเมนูขนม เช่น Banoffee Cake" value="${escapeHtml(item.name)}">
+          <div class="repo-card-price-row">
+            <input type="number" step="any" class="num-input" placeholder="0.00" value="${item.price}">
+            <span class="bt">฿</span>
+          </div>
+        </div>
+        ${item.sourceRecipeId ? '<div class="repo-card-edit-hint">แตะเพื่อแก้ไขสูตรคำนวณต้นทุน</div>' : ''}
       `;
-      const [nameInp, priceInp] = tr.querySelectorAll('input');
+      const nameInp = card.querySelector('.repo-card-name');
+      const priceInp = card.querySelector('.repo-card-price-row input');
       nameInp.addEventListener('input', e => { item.name = e.target.value; });
       priceInp.addEventListener('input', e => { item.price = e.target.value; });
-      bindImagePasteAndClick(tr.querySelector('.paste-area'), item, 'repo');
-      tr.querySelector('.row-del-btn').addEventListener('click', () => {
+      bindImagePasteAndClick(card.querySelector('.paste-area'), item, 'repo');
+      card.querySelector('.repo-card-del').addEventListener('click', e => {
+        e.stopPropagation();
         recipeRepo = recipeRepo.filter(i => i.id !== item.id);
         renderRepo();
         db.set('bakery-repo', JSON.stringify(recipeRepo));
       });
-      body.appendChild(tr);
+      card.addEventListener('click', e => {
+        if(e.target.closest('input, button, .paste-area')) return;
+        if(item.sourceRecipeId){ switchTab('recipes'); loadRecipe(item.sourceRecipeId); }
+      });
+      grid.appendChild(card);
     });
+
+    const addCard = document.createElement('button');
+    addCard.type = 'button';
+    addCard.className = 'repo-add-card';
+    addCard.innerHTML = '<span style="font-size:26px; line-height:1;">＋</span><span>เพิ่มเมนูเข้าคลังสูตร</span>';
+    addCard.addEventListener('click', () => { recipeRepo.push(blankRepoItem()); renderRepo(); });
+    grid.appendChild(addCard);
   }
 
-  $('addRepoRowBtn').addEventListener('click', () => { recipeRepo.push(blankRepoItem()); renderRepo(); });
   $('saveRepoBtn').addEventListener('click', async () => {
     if(await db.set('bakery-repo', JSON.stringify(recipeRepo))) {
       $('repoSaveMsg').textContent = 'บันทึกคลังสูตรขนมสำเร็จแล้ว ✓'; setTimeout(() => { $('repoSaveMsg').textContent = ''; }, 2500);
