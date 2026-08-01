@@ -253,6 +253,15 @@
   .img-preview{ max-height: 44px; max-width: 100%; border-radius: 4px; display: block; margin: 0 auto; }
   .inv-thumb{ width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--paper-line); background: #FFF; }
 
+  .unit-toggle{ display:flex; gap:4px; flex-wrap:wrap; }
+  .unit-btn{
+    font-family:'Sarabun',sans-serif; font-size:12.5px; font-weight:500; color:var(--ink-soft);
+    background:#FFF; border:1px solid var(--paper-line); border-radius:7px; padding:6px 10px; cursor:pointer;
+    transition: all .12s;
+  }
+  .unit-btn:hover{ border-color:var(--gold-dark); color:var(--clay); }
+  .unit-btn.active{ background:var(--gold); border-color:var(--gold-dark); color:#FFF; font-weight:600; }
+
   .summary-grid{ display:grid; grid-template-columns: 1.4fr 1fr; gap:22px; margin-top:32px; align-items:start; }
   @media (max-width: 760px){ .summary-grid{ grid-template-columns:1fr; } }
 
@@ -862,7 +871,11 @@
         <td><input type="text" class="inv-name" placeholder="ชื่อวัตถุดิบ เช่น แป้งพัดโบก" value="${escapeHtml(item.name)}"></td>
         <td><input type="number" step="any" class="num-input inv-price" placeholder="เช่น 45" value="${item.price}"></td>
         <td><input type="number" step="any" class="num-input inv-qty" placeholder="เช่น 1000" value="${item.qty}"></td>
-        <td><select class="unit-select">${unitOptions.map(u => `<option value="${u}" ${item.unit===u?'selected':''}>${u}</option>`).join('')}</select></td>
+        <td>
+          <div class="unit-toggle">
+            ${unitOptions.map(u => `<button type="button" class="unit-btn ${item.unit===u?'active':''}" data-unit="${u}">${u}</button>`).join('')}
+          </div>
+        </td>
         <td class="inv-unitprice" style="text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ledger);"></td>
         <td><div class="paste-area" tabindex="0">${item.image ? '<img src="'+item.image+'" class="img-preview">' : 'คลิกแล้วกด Ctrl+V เพื่อวางรูป'}</div></td>
         <td class="col-del"><button class="row-del-btn">✕</button></td>
@@ -871,7 +884,7 @@
       const nameInp = tr.querySelector('.inv-name');
       const priceInp = tr.querySelector('.inv-price');
       const qtyInp = tr.querySelector('.inv-qty');
-      const unitInp = tr.querySelector('.unit-select');
+      const unitBtns = tr.querySelectorAll('.unit-btn');
       const unitPriceCell = tr.querySelector('.inv-unitprice');
 
       function refreshUnitPrice(){
@@ -883,7 +896,12 @@
       nameInp.addEventListener('input', e => { item.name = e.target.value; });
       priceInp.addEventListener('input', e => { item.price = e.target.value; refreshUnitPrice(); });
       qtyInp.addEventListener('input', e => { item.qty = e.target.value; refreshUnitPrice(); });
-      unitInp.addEventListener('change', e => { item.unit = e.target.value; });
+      unitBtns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          item.unit = btn.dataset.unit;
+          unitBtns.forEach(b => b.classList.toggle('active', b === btn));
+        });
+      });
       bindImagePasteAndClick(tr.querySelector('.paste-area'), item, 'inventory');
       tr.querySelector('.row-del-btn').addEventListener('click', () => {
         inventory = inventory.filter(i => i.id !== item.id);
