@@ -480,7 +480,7 @@
       <button class="save-btn" id="saveInvBtn">💾 บันทึกคลังวัตถุดิบ</button>
       <button class="util-btn" id="exportInvBtn">⭳ Export</button>
       <button class="util-btn" id="importInvBtn">⭱ Import</button>
-      <input type="file" id="importInvFile" accept="application/json,.json" style="display:none;">
+      <input type="file" id="importInvFile" accept=".xls,.html,.csv,text/csv,application/json,.json" style="display:none;">
       <span class="save-msg" id="invSaveMsg"></span>
     </div>
   </main>
@@ -933,12 +933,142 @@
     }
   });
 
-  // Export/Import คลังวัตถุดิบ (JSON)
+  const inventoryTemplateHeaders = ['Name', 'Price per. g.', 'Price', 'Volume', 'Category', 'Stroe', 'List'];
+
+  function csvEscape(value){
+    const text = value == null ? '' : String(value);
+    return /[",\r\n]/.test(text) ? '"' + text.replace(/"/g, '""') + '"' : text;
+  }
+
+  function toCsv(rows){
+    return rows.map(row => row.map(csvEscape).join(',')).join('\r\n');
+  }
+
+  function parseCsv(text){
+    const rows = [];
+    let row = [];
+    let cell = '';
+    let quoted = false;
+    for(let i = 0; i < text.length; i++){
+      const ch = text[i];
+      const next = text[i + 1];
+      if(quoted){
+        if(ch === '"' && next === '"'){ cell += '"'; i++; }
+        else if(ch === '"'){ quoted = false; }
+        else { cell += ch; }
+      } else if(ch === '"'){
+        quoted = true;
+      } else if(ch === ','){
+        row.push(cell); cell = '';
+      } else if(ch === '\n'){
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else if(ch !== '\r'){
+        cell += ch;
+      }
+    }
+    row.push(cell);
+    if(row.some(v => v.trim() !== '')) rows.push(row);
+    return rows;
+  }
+
+  function normalizeInventoryItem(item){
+    return {
+      id: item.id || uid('item'),
+      name: item.name || item.Name || '',
+      price: item.price ?? item.Price ?? '',
+      qty: item.qty ?? item.Volume ?? '',
+      unit: item.unit || 'กรัม (g)',
+      image: item.image || '',
+      category: item.category || item.Category || '',
+      store: item.store || item.Stroe || item.Store || '',
+      list: item.list || item.List || ''
+    };
+  }
+
+  function inventoryCsvRows(){
+    return inventory.map(item => {
+      const normalized = normalizeInventoryItem(item);
+      const pricePerGram = invUnitPrice(normalized);
+      return [
+        normalized.name,
+        pricePerGram !== null ? pricePerGram : '',
+        normalized.price,
+        normalized.qty,
+        normalized.category,
+        normalized.store,
+        normalized.list
+      ];
+    });
+  }
+
+  function inventoryTemplateHtml(){
+    const rows = [inventoryTemplateHeaders].concat(inventoryCsvRows());
+    const colWidths = [230, 120, 80, 90, 120, 90, 330];
+    const body = rows.map((row, rowIndex) => {
+      const cells = row.map((cell, cellIndex) => {
+        const tag = rowIndex === 0 ? 'th' : 'td';
+        const headerStyle = 'background:#0f8f4f;color:#ffffff;font-weight:700;border:1px solid #0a6d3c;text-align:left;';
+        const bodyStyle = [
+          'border:1px solid #000000;',
+          'height:26px;',
+          cellIndex === 1 ? 'color:#ff0000;text-align:center;' : '',
+          cellIndex === 2 || cellIndex === 3 ? 'text-align:center;' : '',
+          cellIndex === 4 ? 'background:#eeeeee;' : ''
+        ].join('');
+        const filter = rowIndex === 0 ? ' <span style="float:right;color:#111111;">▼</span>' : '';
+        return `<${tag} style="width:${colWidths[cellIndex]}px;${rowIndex === 0 ? headerStyle : bodyStyle}">${escapeHtml(cell)}${filter}</${tag}>`;
+      }).join('');
+      return `<tr>${cells}</tr>`;
+    }).join('');
+    return `<!DOCTYPE html><html><head><meta charset="UTF-8"></head><body><table>${body}</table></body></html>`;
+  }
+
+  function inventoryFromRows(rows){
+    if(!rows.length) return [];
+    const headers = rows[0].map(h => h.trim());
+    const indexOf = (...names) => {
+      const lowered = names.map(n => n.toLowerCase());
+      return headers.findIndex(h => lowered.includes(h.toLowerCase()));
+    };
+    const nameIndex = indexOf('Name');
+    const priceIndex = indexOf('Price');
+    const volumeIndex = indexOf('Volume');
+    const categoryIndex = indexOf('Category');
+    const storeIndex = indexOf('Stroe', 'Store');
+    const listIndex = indexOf('List');
+    if(nameIndex === -1 || priceIndex === -1 || volumeIndex === -1) {
+      throw new Error('CSV template is missing required columns');
+    }
+    return rows.slice(1).map(row => normalizeInventoryItem({
+      name: row[nameIndex] || '',
+      price: row[priceIndex] || '',
+      qty: row[volumeIndex] || '',
+      category: categoryIndex >= 0 ? row[categoryIndex] : '',
+      store: storeIndex >= 0 ? row[storeIndex] : '',
+      list: listIndex >= 0 ? row[listIndex] : ''
+    })).filter(item => item.name || item.price || item.qty);
+  }
+
+  function inventoryFromCsv(text){
+    return inventoryFromRows(parseCsv(text.replace(/^\uFEFF/, '')));
+  }
+
+  function inventoryFromHtml(text){
+    const doc = new DOMParser().parseFromString(text, 'text/html');
+    const table = doc.querySelector('table');
+    if(!table) throw new Error('Template table not found');
+    const rows = [...table.querySelectorAll('tr')].map(tr =>
+      [...tr.children].map(cell => (cell.textContent || '').replace(/▼/g, '').trim())
+    ).filter(row => row.some(cell => cell));
+    return inventoryFromRows(rows);
+  }
+
+  // Export/Import คลังวัตถุดิบ (Excel-style template + CSV/legacy JSON)
   $('exportInvBtn').addEventListener('click', () => {
-    const blob = new Blob([JSON.stringify(inventory, null, 2)], { type: 'application/json' });
+    const blob = new Blob([inventoryTemplateHtml()], { type: 'application/vnd.ms-excel;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
-    a.href = url; a.download = 'คลังวัตถุดิบ-' + new Date().toISOString().slice(0,10) + '.json';
+    a.href = url; a.download = 'inventory-template-' + new Date().toISOString().slice(0,10) + '.xls';
     document.body.appendChild(a); a.click(); a.remove();
     URL.revokeObjectURL(url);
   });
@@ -949,17 +1079,22 @@
     const reader = new FileReader();
     reader.onload = async ev => {
       try {
-        const parsed = JSON.parse(ev.target.result);
+        const raw = ev.target.result || '';
+        const fileName = file.name.toLowerCase();
+        const parsed = fileName.endsWith('.json')
+          ? JSON.parse(raw)
+          : fileName.endsWith('.xls') || fileName.endsWith('.html') || raw.trim().startsWith('<')
+          ? inventoryFromHtml(raw)
+          : inventoryFromCsv(raw);
         if(!Array.isArray(parsed)) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
-        // เติม id ให้รายการที่ไม่มี (กันชนกับของเดิม) แล้วรวมเข้ากับคลังปัจจุบัน
-        parsed.forEach(item => { if(!item.id) item.id = uid('item'); });
-        inventory = inventory.concat(parsed);
+        const importedItems = parsed.map(normalizeInventoryItem);
+        inventory = inventory.concat(importedItems);
         renderInventory();
         await persistInventory();
         renderIngredients(); recalc();
-        $('invSaveMsg').textContent = `นำเข้า ${parsed.length} รายการสำเร็จ ✓`; setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3000);
+        $('invSaveMsg').textContent = `นำเข้า ${importedItems.length} รายการสำเร็จ ✓`; setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3000);
       } catch(err) {
-        $('invSaveMsg').textContent = 'ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .json ที่ export จากระบบนี้';
+        $('invSaveMsg').textContent = 'ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .xls/.csv ตามเทมเพลต หรือ .json เดิมจากระบบนี้';
         setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3500);
       }
     };
