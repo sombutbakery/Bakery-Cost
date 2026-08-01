@@ -253,10 +253,10 @@
   .img-preview{ max-height: 44px; max-width: 100%; border-radius: 4px; display: block; margin: 0 auto; }
   .inv-thumb{ width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--paper-line); background: #FFF; }
 
-  .unit-toggle{ display:flex; gap:4px; flex-wrap:wrap; }
+  .unit-toggle{ display:flex; gap:4px; flex-wrap:nowrap; }
   .unit-btn{
-    font-family:'Sarabun',sans-serif; font-size:12.5px; font-weight:500; color:var(--ink-soft);
-    background:#FFF; border:1px solid var(--paper-line); border-radius:7px; padding:6px 10px; cursor:pointer;
+    font-family:'Sarabun',sans-serif; font-size:11.5px; font-weight:500; color:var(--ink-soft); white-space:nowrap;
+    background:#FFF; border:1px solid var(--paper-line); border-radius:6px; padding:6px 8px; cursor:pointer;
     transition: all .12s;
   }
   .unit-btn:hover{ border-color:var(--gold-dark); color:var(--clay); }
@@ -461,13 +461,13 @@
       <table id="inventoryTable">
         <thead>
           <tr>
-            <th style="width:8%; text-align:center;">รูปภาพ</th>
-            <th style="width:20%">ชื่อวัตถุดิบ</th>
-            <th style="width:11%">ราคา (฿)</th>
-            <th style="width:10%">ปริมาณ</th>
-            <th style="width:11%">หน่วยวัด</th>
-            <th style="width:13%">ราคา/หน่วย (฿)</th>
-            <th style="width:22%">คลิกและกด Ctrl+V เพื่อวางรูป</th>
+            <th style="width:7%; text-align:center;">รูปภาพ</th>
+            <th style="width:16%">ชื่อวัตถุดิบ</th>
+            <th style="width:10%">ราคา (฿)</th>
+            <th style="width:9%">ปริมาณ</th>
+            <th style="width:17%">หน่วยวัด</th>
+            <th style="width:12%">ราคา/หน่วย (฿)</th>
+            <th style="width:24%">คลิกและกด Ctrl+V เพื่อวางรูป</th>
             <th style="width:5%"></th>
           </tr>
         </thead>
@@ -878,6 +878,7 @@
       const tr = document.createElement('tr');
       const placeholderImg = `data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='40' height='40' viewBox='0 0 24 24' fill='none' stroke='%23B9AE84' stroke-width='1.5'><rect x='3' y='3' width='18' height='18' rx='2'/><circle cx='8.5' cy='8.5' r='1.5'/><path d='M21 15l-5-5L5 21'/></svg>`;
       const unitOptions = ['กรัม (g)', 'มิลลิลิตร (ml)'];
+      const unitLabels = { 'กรัม (g)': 'กรัม (g)', 'มิลลิลิตร (ml)': 'มล. (ml)' };
       tr.innerHTML = `
         <td style="text-align:center;"><img src="${item.image || placeholderImg}" class="inv-thumb"></td>
         <td><input type="text" class="inv-name" placeholder="ชื่อวัตถุดิบ เช่น แป้งพัดโบก" value="${escapeHtml(item.name)}"></td>
@@ -885,7 +886,7 @@
         <td><input type="number" step="any" class="num-input inv-qty" placeholder="เช่น 1000" value="${item.qty}"></td>
         <td>
           <div class="unit-toggle">
-            ${unitOptions.map(u => `<button type="button" class="unit-btn ${item.unit===u?'active':''}" data-unit="${u}">${u}</button>`).join('')}
+            ${unitOptions.map(u => `<button type="button" class="unit-btn ${item.unit===u?'active':''}" data-unit="${u}" title="${u}">${unitLabels[u]}</button>`).join('')}
           </div>
         </td>
         <td class="inv-unitprice" style="text-align:right; font-family:'JetBrains Mono',monospace; font-weight:600; color:var(--ledger);"></td>
