@@ -498,6 +498,8 @@
 <datalist id="invNameList"></datalist>
 <input type="file" id="hiddenFileInput" accept="image/*" style="display:none;">
 
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script>
 (function(){
   // App States
@@ -520,18 +522,55 @@
   }
   function escapeHtml(str){ return (str || '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
 
-  // DATABASE CONTROLLER
+  // FIREBASE / FIRESTORE SETUP
+  const firebaseConfig = {
+    apiKey: "AIzaSyA201bndj5QEQnXXW4k03rDfuw_E8gmXfM",
+    authDomain: "baseon-bakery.firebaseapp.com",
+    projectId: "baseon-bakery",
+    storageBucket: "baseon-bakery.firebasestorage.app",
+    messagingSenderId: "371651382554",
+    appId: "1:371651382554:web:3642653c729052308ab0a3"
+  };
+
+  let firestore = null;
+  try {
+    firebase.initializeApp(firebaseConfig);
+    firestore = firebase.firestore();
+  } catch(e) { console.error('Firebase init failed', e); }
+
+  // Firestore doc-id friendly key (colons are fine in Firestore doc IDs, but keep it safe)
+  function safeKey(key){ return key.replace(/\//g, '__'); }
+
+  // DATABASE CONTROLLER (Firestore primary, localStorage fallback)
   const db = {
     async get(key) {
-      if(window.storage && typeof window.storage.get === 'function') return await window.storage.get(key, false);
+      if(firestore) {
+        try {
+          const snap = await firestore.collection('bakery_data').doc(safeKey(key)).get();
+          if(snap.exists) return { value: snap.data().value };
+          return { value: null };
+        } catch(e) { console.error('Firestore get failed, falling back', e); }
+      }
       return { value: localStorage.getItem(key) };
     },
     async set(key, val) {
-      if(window.storage && typeof window.storage.set === 'function') return await window.storage.set(key, val, false);
+      if(firestore) {
+        try {
+          await firestore.collection('bakery_data').doc(safeKey(key)).set({ value: val, updatedAt: Date.now() });
+          localStorage.setItem(key, val); // keep local mirror as offline cache
+          return true;
+        } catch(e) { console.error('Firestore set failed, falling back', e); }
+      }
       localStorage.setItem(key, val); return true;
     },
     async delete(key) {
-      if(window.storage && typeof window.storage.delete === 'function') return await window.storage.delete(key, false);
+      if(firestore) {
+        try {
+          await firestore.collection('bakery_data').doc(safeKey(key)).delete();
+          localStorage.removeItem(key);
+          return true;
+        } catch(e) { console.error('Firestore delete failed, falling back', e); }
+      }
       localStorage.removeItem(key); return true;
     }
   };
