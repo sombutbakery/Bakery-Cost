@@ -303,6 +303,13 @@
   .save-btn:active{ transform:translateY(2px); box-shadow:none; }
   .save-msg{ font-size:13.5px; color:var(--ledger); font-weight:600; font-style:italic; }
 
+  .util-btn{
+    background:#FFF; color:var(--clay); font-family:'Kanit',sans-serif; font-weight:500; font-size:14px;
+    border:1.5px solid var(--paper-line); padding:11px 20px; border-radius:9px; cursor:pointer;
+    display:flex; align-items:center; gap:7px; transition: border-color .12s, color .12s;
+  }
+  .util-btn:hover{ border-color:var(--gold-dark); color:var(--gold-dark); }
+
   @media (max-width: 860px){
     .app{ flex-direction:column; }
     .sidebar{ width:100%; padding:18px 0; }
@@ -471,6 +478,9 @@
     
     <div class="actions-row">
       <button class="save-btn" id="saveInvBtn">💾 บันทึกคลังวัตถุดิบ</button>
+      <button class="util-btn" id="exportInvBtn">⭳ Export</button>
+      <button class="util-btn" id="importInvBtn">⭱ Import</button>
+      <input type="file" id="importInvFile" accept="application/json,.json" style="display:none;">
       <span class="save-msg" id="invSaveMsg"></span>
     </div>
   </main>
@@ -499,6 +509,9 @@
 
     <div class="actions-row">
       <button class="save-btn" id="saveRepoBtn">💾 บันทึกคลังสูตรขนม</button>
+      <button class="util-btn" id="exportRepoBtn">⭳ Export</button>
+      <button class="util-btn" id="importRepoBtn">⭱ Import</button>
+      <input type="file" id="importRepoFile" accept="application/json,.json" style="display:none;">
       <span class="save-msg" id="repoSaveMsg"></span>
     </div>
   </main>
@@ -919,6 +932,40 @@
     }
   });
 
+  // Export/Import คลังวัตถุดิบ (JSON)
+  $('exportInvBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(inventory, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'คลังวัตถุดิบ-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+  $('importInvBtn').addEventListener('click', () => { $('importInvFile').click(); });
+  $('importInvFile').addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if(!Array.isArray(parsed)) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+        // เติม id ให้รายการที่ไม่มี (กันชนกับของเดิม) แล้วรวมเข้ากับคลังปัจจุบัน
+        parsed.forEach(item => { if(!item.id) item.id = uid('item'); });
+        inventory = inventory.concat(parsed);
+        renderInventory();
+        await persistInventory();
+        renderIngredients(); recalc();
+        $('invSaveMsg').textContent = `นำเข้า ${parsed.length} รายการสำเร็จ ✓`; setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3000);
+      } catch(err) {
+        $('invSaveMsg').textContent = 'ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .json ที่ export จากระบบนี้';
+        setTimeout(() => { $('invSaveMsg').textContent = ''; }, 3500);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
+  });
+
   // --- RECIPE REPOSITORY PANEL (NEW) ---
   function renderRepo(){
     const body = $('repoBody'); body.innerHTML = '';
@@ -954,6 +1001,38 @@
     if(await db.set('bakery-repo', JSON.stringify(recipeRepo))) {
       $('repoSaveMsg').textContent = 'บันทึกคลังสูตรขนมสำเร็จแล้ว ✓'; setTimeout(() => { $('repoSaveMsg').textContent = ''; }, 2500);
     }
+  });
+
+  // Export/Import คลังสูตรขนมพร้อมรูป (JSON)
+  $('exportRepoBtn').addEventListener('click', () => {
+    const blob = new Blob([JSON.stringify(recipeRepo, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url; a.download = 'คลังสูตรขนม-' + new Date().toISOString().slice(0,10) + '.json';
+    document.body.appendChild(a); a.click(); a.remove();
+    URL.revokeObjectURL(url);
+  });
+  $('importRepoBtn').addEventListener('click', () => { $('importRepoFile').click(); });
+  $('importRepoFile').addEventListener('change', e => {
+    const file = e.target.files && e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = async ev => {
+      try {
+        const parsed = JSON.parse(ev.target.result);
+        if(!Array.isArray(parsed)) throw new Error('รูปแบบไฟล์ไม่ถูกต้อง');
+        parsed.forEach(item => { if(!item.id) item.id = uid('repo'); });
+        recipeRepo = recipeRepo.concat(parsed);
+        renderRepo();
+        await db.set('bakery-repo', JSON.stringify(recipeRepo));
+        $('repoSaveMsg').textContent = `นำเข้า ${parsed.length} รายการสำเร็จ ✓`; setTimeout(() => { $('repoSaveMsg').textContent = ''; }, 3000);
+      } catch(err) {
+        $('repoSaveMsg').textContent = 'ไฟล์ไม่ถูกต้อง กรุณาเลือกไฟล์ .json ที่ export จากระบบนี้';
+        setTimeout(() => { $('repoSaveMsg').textContent = ''; }, 3500);
+      }
+    };
+    reader.readAsText(file);
+    e.target.value = '';
   });
 
   // --- RECIPE LOGICS ---
